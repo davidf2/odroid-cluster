@@ -2,7 +2,7 @@
 
 # Default values
 ip="172.16.0.1"
-mask="255:255:0:0"
+mask="255.255.0.0"
 class="B"
 
 
@@ -98,11 +98,10 @@ checkMask() {
 # El primer parametre retorna la interficie de xarxa amb connexio a internet
 checkInterfaces() {
 	OLDIFS=$IFS
-	IFS=$'\t'
-	# !!! En comptes d'instalar net-tools podria treure els noms del fitxer /proc/net/dev !!!
+	IFS=$' \t\n'
 	# Cerca la NIC amb connexió a internet
-	for nic in $(echo $(nmcli device status) | grep " connected " | awk '{print $1}'); do
-		if [[ $(ping 8.8.8.8 -I $nic -w2 | grep "received" | cut -d " " -f4) -gt 0 ]]; then
+	for nic in $(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1)); do
+		if [[ $(ping 8.8.8.8 -I $nic -w2 2> /dev/null | grep "received" | cut -d " " -f4) -gt 0 ]]; then
 			interface="$nic"
 		else
 			interface2="$nic"
@@ -155,7 +154,7 @@ while [ -n "$1" ]; do # Mentres $1 no sigui null
 		;;
 
 	-n)
-		interface=$2
+		interface2=$2
 		shift
 		;;
 
@@ -168,8 +167,6 @@ while [ -n "$1" ]; do # Mentres $1 no sigui null
 done
 
 
-apt install net-tools -y
-
 if [[ -z "$interface" ]]; then
 	result=$(checkInterfaces)
 	if [[ $? -ne 0 ]]; then 
@@ -179,22 +176,23 @@ if [[ -z "$interface" ]]; then
 	interface2=$(echo $result | cut -d ";" -f 2)
 fi
 
-echo "The interface selected to the internet is $interface"
-
-
-#DESCOMENTAR CUANDO ESTE HECHO
-<< 'MULTILINE-COMMENT'
 echo "
-auto $interface
-iface $interface inet static
+auto $interface2
+iface $interface2 inet static
     address $ip
     netmask $mask" > /etc/network/interfaces
+
+#Reiniciem la interficie de xarxa (xarxa interna)
+ifdown $interface2
+ifup $interface2
 
 # Habilitar forwarding, descomentant la linia pertinent
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 sysctl -p
 
-MULTILINE-COMMENT
+# Habilitar postrouitng a iptables per donar acces a internet a la xarxa interna
+iptables -t nat -A POSTROUTING -o $interface -j MASQUERADE
 
-echo "$ip $mask"
+
+echo "$ip;$mask;$interface;$interface2"
 
