@@ -1,134 +1,19 @@
 #!/bin/bash
 
+export PATH="$(dirname $0):${PATH}"
+
+# Carreguem el script network_api.sh com a una llibreria, per 
+#	poder fer servir les seves funcions
+source ./network_api.sh
+
 # Default values
 ip="172.16.0.1"
-mask="255.255.0.0"
+mask="255.255.255.0"
 class="B"
 
-
-checkIP() {
-
-	result="P"
-
-	if [[ $(echo $1 | grep [^0-9.]) ]]; then
-		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
-		return 1
-	fi
-
-	if [[ $(echo $1 | awk -F'.' '{print NF}') -ne 4 ]]; then
-		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
-		return 1
-	fi
-
-	if [[ $(echo $1 | cut -d "." -f 4) -eq 255 ]]; then
-		echo "ERROR: You cannot put broadcast address as the master's IP" 1>&2
-		return 1
-	fi
-
-	octet=1
-	while [ $(echo $1 | cut -d "." -f $octet) ]; do
-		if [[ $(echo $1 | cut -d "." -f $octet) -lt 0 ]] || [[ $(echo $1 | cut -d "." -f $octet) -gt 255 ]]; then
-			echo "ERROR: Incorrect IP format $(echo $1 | cut -d "." -f $octet)" 1>&2
-			return 1
-		fi
-		let octet=octet+1
-	done
-
-	case $(echo $1 | cut -d "." -f 1) in
-		10)
-			result="A"
-		;;
-
-		172)
-			if [[ $(echo $1 | cut -d "." -f 2) -ge 16 ]] && [[ $(echo $1 | cut -d "." -f 2) -le 31 ]]; then
-				result="B"
-			fi
-		;;
-
-		192)
-			if [[ $(echo $1 | cut -d "." -f 2) -eq 168 ]]; then
-				result="C"
-			fi
-		;;
-
-	esac
-	
-	echo $result
-}
-
-checkMask() {
-
-	result="true"
-
-	if [[ $(echo $1 | grep [^0-9:]) ]]; then
-		echo "ERROR: Incorrect mask format, can only contain numbers and colons" 1>&2
-		return 1
-	fi
-
-	if [[ $(echo $1 | awk -F':' '{print NF}') -ne 4 ]]; then
-		echo "ERROR: Incorrect mask format, incorrect octets number" 1>&2
-		return 1
-	fi
-
-	case $2 in
-		A) min=1;;
-		B) min=2;;
-		C) min=2;;
-	esac
-
-	octet=1
-	while [ $(echo $1 | cut -d ":" -f $octet) ]; do
-		if [[ $octet -le $min ]]; then
-			if [[ $(echo $1 | cut -d ":" -f $octet) -ne 255 ]]; then
-				echo "ERROR: Incorrect mask format" 1>&2
-				return 1
-			fi
-		else
-			if [[ $(echo $1 | cut -d ":" -f $octet) -lt 0 ]] || [[ $(echo $1 | cut -d ":" -f $octet) -gt 255 ]]; then
-				echo "ERROR: Incorrect mask format" 1>&2
-				return 1
-			fi
-		fi
-		let octet=octet+1
-	done
-
-	echo $result
-}
-
-# El primer parametre retorna la interficie de xarxa amb connexio a internet
-checkInterfaces() {
-	OLDIFS=$IFS
-	IFS=$' \t\n'
-	# Cerca la NIC amb connexió a internet
-	for nic in $(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1)); do
-		if [[ $(ping 8.8.8.8 -I $nic -w2 2> /dev/null | grep "received" | cut -d " " -f4) -gt 0 ]]; then
-			interface="$nic"
-		else
-			interface2="$nic"
-		fi
-	done
-	IFS=$OLDIFS
-
-	# Comprovació final
-	if [[ -z "$interface" ]]; then
-		echo "ERROR: No internet connected interfaces found" 1>&2
-		return 1
-	fi
-
-	# Comprovació final
-	if [[ -z "$interface2" ]]; then
-		echo "ERROR: Not found the second network interface" 1>&2
-		return 1
-	fi
-
-	echo "$interface;$interface2"
-}
-
-while [ -n "$1" ]; do # Mentres $1 no sigui null 
-
-	case "$1" in
-
-	-i) result=$(checkIP "$2")
+while getopts ":i:m:n:" opt; do
+  case ${opt} in
+    -i) result=$(check_ip "$OPTARG")
 		if [[ $? -ne 0 ]]; then
 			exit 1
 		fi
@@ -140,35 +25,34 @@ while [ -n "$1" ]; do # Mentres $1 no sigui null
 				exit 1 ;;
 		esac
 		class=$result
-		ip=$2
+		ip=$OPTARG
 		shift
 		;;
 
 	-m)
-		result=$(checkMask "$2" "$class")
+		result=$(check_mask "$OPTARG" "$class")
 		if [[ $? -ne 0 ]]; then
 			exit 1
 		fi
-		mask=$2
-		shift
+		mask=$OPTARG
 		;;
 
 	-n)
-		interface2=$2
-		shift
+		interface2=$OPTARG
 		;;
+    \?)
+		echo "Invalid option: $OPTARG" 1>&2
+    	;;
 
-	*) echo "Option $1 not recognized" ;;
-
-	esac
-
-	shift # Desplaça $# cap a l'esquerra $1 -> $2 ...
-
+    :)
+		echo "Invalid option: $OPTARG requires an argument" 1>&2
+		;;
+  esac
 done
 
 
 if [[ -z "$interface" ]]; then
-	result=$(checkInterfaces)
+	result=$(check_interfaces)
 	if [[ $? -ne 0 ]]; then 
 		exit 1
 	fi
@@ -182,17 +66,24 @@ iface $interface2 inet static
     address $ip
     netmask $mask" > /etc/network/interfaces
 
-#Reiniciem la interficie de xarxa (xarxa interna)
+echo "$ip master" >> /etc/hosts
+
+# Reiniciem la interficie de xarxa (xarxa interna)
 ifdown $interface2
 ifup $interface2
 
-# Habilitar forwarding, descomentant la linia pertinent
+# Habilitem de forma permanent el forwarding, descomentant la linia pertinent
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
+# Carrega els canvis sense reiniciar
 sysctl -p
 
-# Habilitar postrouitng a iptables per donar acces a internet a la xarxa interna
+# Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
 iptables -t nat -A POSTROUTING -o $interface -j MASQUERADE
 
+# Guardem els canvis a iptables de forma permanentment
+bash -c "iptables-save > /etc/iptables/rules.v4"
+bash -c "iptables-save > /etc/iptables/rules.v6"
 
+# Retornem els resultats
 echo "$ip;$mask;$interface;$interface2"
 
