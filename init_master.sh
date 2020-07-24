@@ -80,7 +80,7 @@ add_dnsmasq() {
 	ip="$1"
 
 	# Instal.lem dnsmasq i el dimoni resolvconf
-	apt install dnsmasq resolvconf -y
+	apt install dnsmasq -y
 
 	# Si no existeix fem una copia de seguretat del fitxer dnsmasq.conf
 	if [[ ( ! -f /etc/dnsmasq.conf.back ) && ( -f /etc/dnsmasq.conf ) ]]; then
@@ -205,16 +205,14 @@ cp -p network_api.sh /opt/scripts/
 # Descomentem
 sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf
 
-# Afegim la propia maquina com a servidor DNS
-echo "nameserver 127.0.0.1" > /etc/resolvconf/resolv.conf.d/base
-
-# Reiniciem i habilitem el dimoni de resolvconf
-systemctl restart resolvconf
-systemctl enable resolvconf
-
 # Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
-systemctl disable --now systemd-resolved
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
 
+rm /etc/resolv.conf && touch /etc/resolv.conf
+# Afegim la propia maquina com a servidor DNS
+echo "nameserver 127.0.0.1" > /etc/resolv.conf
+chattr +i /etc/resolv.conf
 
 # Reiniciem i habilitem el dimoni de dnsmasq
 systemctl restart dnsmasq
