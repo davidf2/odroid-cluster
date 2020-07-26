@@ -13,7 +13,7 @@ user=$(echo $(who am i | awk '{print $1}'))
 master_home=$(eval echo "~$user")
 
 echo $user
-#echo $master_home
+echo $master_home
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
@@ -42,19 +42,22 @@ echo "$(ssh-keyscan -H $host)" >> $KNOWN_HOSTS
 chown "$user":$(id -gn "$user") $KNOWN_HOSTS
 
 # Copiem la clau publica al slave
-sshpass -p $password ssh-copy-id -i $KEY_FILE $name@$host
+su $name -c "sshpass -p $password ssh-copy-id -i $KEY_FILE $name@$host"
 
 # Agafem la IP de la xarxa interna
 interface=$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)
 master_ip=$(get_ip_of_nic "$interface")
 
-echo "Copiant script al slave"
-sshpass -p $password scp init_slave.sh "${name}@${host}:Documents"
 
-echo "Afegint excpeció a /etc/password"
-sshpass -p $password ssh -t "${name}@${host}" " echo $password | sudo -S -k $(echo '${name} ALL=(ALL) NOPASSWD:/home/${name}/Documents/init_slave.sh' >> /etc/sudoers)"
+
+echo "Copiant script al slave"
+#su $name -c "sshpass -p $password scp init_slave.sh \"${name}@${host}:Documents\""
+su $user -c "sshpass -p ${password} scp init_slave.sh ${name}@${host}:Documents"
+
+#echo "Afegint excpeció a /etc/password"
+#su $name -c "sshpass -p $password ssh -t ${name}@${host} echo $password | sudo -S bash -c 'echo '${name} ALL=(ALL) NOPASSWD:/home/${name}/Documents/init_slave.sh' >> /etc/sudoers'"
 
 echo "Executant script de inicialització"
 # Executem el script que configura el slave mitjançant ssh, primera conexió com a root
-sshpass -p $password ssh -t "${name}@${host}" " ~/Documents/init_slave.sh ${master_ip} ${master_home}"
+su $user -c "sshpass -p ${password} ssh -t ${name}@${host} \"echo ${password} | sudo -S Documents/init_slave.sh $master_ip $master_home \""
 

@@ -159,6 +159,7 @@ apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 # Actualitzem el master
 apt update -y
 
+# Evitem que el dialeg amb la GUI durant la instal.lació de iptables-persistent 
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 # Iptables persistent
