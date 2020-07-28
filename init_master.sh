@@ -94,7 +94,8 @@ add_dnsmasq() {
 	server=${EXTERNALDNS2}
 	domain-needed
 	bogus-priv
-
+	no-resolv
+	
 	interface=eth1
 	dhcp-range=${ip},172.16.0.254,12h
 	# Establecer la puerta de enlace predeterminada.
@@ -104,6 +105,10 @@ add_dnsmasq() {
 
 	dhcp-script=/opt/scripts/dhcp_script.sh
 	" > /etc/dnsmasq.conf
+
+	# Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
+	systemctl stop systemd-resolved
+	systemctl disable systemd-resolved
 
 	modify_dnsmasq_service
 
@@ -150,8 +155,19 @@ add_nfs() {
 	systemctl enable --now nfs-kernel-server
 }
 
+add_munge() {
+	apt-get install munge -y
+	/usr/sbin/create-munge-key -f
+	systemctl enable munge
+	systemctl start munge
+}
+
 # Instal.lem el driver de la targeta de xarxa 
 install_nic_driver
+
+#Fiquem a zona horaria i actualitzem l'hora
+timedatectl set-timezone Europe/Madrid
+ntpdate -u hora.roa.es
 
 # Solucionem error de claus amb l'update
 apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
@@ -206,10 +222,6 @@ cp -p network_api.sh /opt/scripts/
 # Descomentem
 sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf
 
-# Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
-systemctl stop systemd-resolved
-systemctl disable systemd-resolved
-
 rm /etc/resolv.conf && touch /etc/resolv.conf
 # Afegim la propia maquina com a servidor DNS
 echo "nameserver 127.0.0.1" > /etc/resolv.conf
@@ -218,6 +230,8 @@ chattr +i /etc/resolv.conf
 # Reiniciem i habilitem el dimoni de dnsmasq
 systemctl restart dnsmasq
 systemctl enable dnsmasq
+
+add_munge
 
 # Actualitzem per no tindre problemes amb modificacións a les instalacions anteriors
 #	amb actualitzacions al kernel

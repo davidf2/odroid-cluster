@@ -1,5 +1,11 @@
 #!/bin/bash
 
+add_munge() {
+	apt install munge -y
+	systemctl enable munge
+	systemctl start munge
+}
+
 if [ $# -lt 2 ]; then
 	echo "Error, you must enter 2 parameters, the first corresponding to the IP of the master
 	and the second to your home directory"
@@ -15,14 +21,18 @@ if [ -z "$interface" ]; then
       exit 1
 fi
 
-# Solucionem error de claus amb l'update
-apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
-
 chattr -i /etc/resolv.conf
 # Fixem com a DNS el master, i convertim el fitxer a immutable
 echo "nameserver ${master_ip}" > /etc/resolv.conf
 # Protegim el resolv.conf de modificacions
 chattr +i /etc/resolv.conf
+
+#Fiquem a zona horaria i actualitzem l'hora
+timedatectl set-timezone Europe/Madrid
+ntpdate -u hora.roa.es
+
+# Solucionem error de claus amb l'update
+apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 
 # Actualitzem
 apt update -y
@@ -38,12 +48,13 @@ apt autoclean -y
 
 # Instal.lem el client NFS
 apt install nfs-common -y
+add_munge
 
-if [[ ! -d $HOME/master ]]; then
-	mkdir $HOME/master
-fi
+chown munge:munge ~/Documents/munge.key
+cp -p ~/Documents/munge.key /etc/munge && rm ~/Documents/munge.key
+systemctl restart munge
 
-echo "${master_ip}:/home/odroid ${master_home}/master nfs rw,async,auto 0 0" >> /etc/fstab
+echo "${master_ip}:/home /home nfs rw,async,auto 0 0" >> /etc/fstab
 mount -a
 
 apt upgrade -y

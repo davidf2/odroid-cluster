@@ -48,10 +48,10 @@ su $name -c "sshpass -p $password ssh-copy-id -i $KEY_FILE $name@$host"
 interface=$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)
 master_ip=$(get_ip_of_nic "$interface")
 
-
+# Copiem la clau de munge
+su $user -c "sshpass -p ${password} scp -p /etc/munge/munge.key ${host}:Documents"
 
 echo "Copiant script al slave"
-#su $name -c "sshpass -p $password scp init_slave.sh \"${name}@${host}:Documents\""
 su $user -c "sshpass -p ${password} scp init_slave.sh ${name}@${host}:Documents"
 
 #echo "Afegint excpeció a /etc/password"

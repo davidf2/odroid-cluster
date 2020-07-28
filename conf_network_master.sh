@@ -68,6 +68,10 @@ iface $interface2 inet static
 
 echo "$ip master" >> /etc/hosts
 
+line=$(cat /etc/hosts | grep 127.0.0.1)
+host=$(echo $(who am i | awk '{print $1}'))
+sed -i 's/^'"$line"'.*/'"$line"' '"$host"'/g' /etc/hosts
+
 # Reiniciem la interficie de xarxa (xarxa interna)
 ifdown $interface2
 ifup $interface2

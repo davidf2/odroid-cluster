@@ -19,7 +19,7 @@ add_odroid() {
 			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$NAME"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
-		#bash -c  './add_slave.sh "$ip" "$NAME"  "$DEFAULT_PASSWORD" &'
+		./add_slave.sh "$ip" "$NAME"  "$DEFAULT_PASSWORD" &
 
 		if [ -f /var/run/dnsmasq/dnsmasq.pid ]; then
 			pid=$(cat /var/run/dnsmasq/dnsmasq.pid)
