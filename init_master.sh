@@ -149,7 +149,7 @@ add_nfs() {
 	ip="$1"
 	mask="$2"
 	apt install nfs-kernel-server -y
-	echo "/home/odroid $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+	echo "/home $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 	exportfs -arv
 
 	systemctl enable --now nfs-kernel-server
