@@ -1,5 +1,6 @@
 #! /bin/bash
 
+
 # Funció per controlar que una IP estigui en un format correcte
 check_ip() {
 
@@ -179,6 +180,7 @@ mask_to_cidr() {
 
 
 calculate_network_ip() {
+	
 	if [ $# -lt 2 ]; then
 		echo "Error, you must enter 2 parameters, the first one corresponding to 
 		an IP and the second one to the mask"

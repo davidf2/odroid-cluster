@@ -2,8 +2,7 @@
 
 LOG_FILE=/var/log/dnsmasq.log
 HOSTS_FILE=/etc/dnsmasq.d/dnsmasq_hosts.conf
-NAME="odroid"
-DEFAULT_PASSWORD="odroid"
+name=$(cat /etc/urvcluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
 
 option=$1
 mac=$2
@@ -14,12 +13,12 @@ add_odroid() {
     if [[ ! $(cat $HOSTS_FILE | grep ^dhcp-host=$mac) ]]; then
 		num_line=$(expr $(cat $HOSTS_FILE | grep ^dhcp-host | wc -l) + 1)
 		if [[ "$num_line" -gt $(cat $HOSTS_FILE | wc -l) ]]; then
-			echo "dhcp-host=$mac,$NAME$num_line,$ip" >> $HOSTS_FILE
+			echo "dhcp-host=$mac,$name$num_line,$ip" >> $HOSTS_FILE
 		else
-			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$NAME"''"$num_line"','"$ip"'' $HOSTS_FILE
+			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$name"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
-		bash -c './add_slave.sh "$ip" "$NAME"  "$DEFAULT_PASSWORD" "$num_line" >/dev/null 2>&1 & disown'
+		/opt/scripts/add_slave.sh "$ip" "$name" "$num_line"
 
 		if [ -f /var/run/dnsmasq/dnsmasq.pid ]; then
 			pid=$(cat /var/run/dnsmasq/dnsmasq.pid)

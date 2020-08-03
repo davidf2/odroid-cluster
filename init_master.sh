@@ -1,12 +1,13 @@
 #!/bin/bash
 
+
 export PATH="$(dirname $0):${PATH}"
 
 # Carreguem el script network_api.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source ./network_api.sh
 
-
+SCRIPTS_DIR=/opt/urvcluster
 EXTERNALDNS1="8.8.8.8"
 EXTERNALDNS2="8.8.4.4"
 
@@ -216,8 +217,10 @@ fi
 cp -p dhcp_script.sh /opt/scripts/
 # Copiem els scripts dependents
 cp -p init_slave.sh /opt/scripts/
+cp -p cron_init_slave.sh /opt/scripts/
 cp -p add_slave.sh /opt/scripts/
 cp -p network_api.sh /opt/scripts/
+cp -p urvcluster.conf /etc
 
 # Descomentem
 sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf

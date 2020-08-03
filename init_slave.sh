@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 add_munge() {
 	apt install munge -y
 	systemctl enable munge
@@ -68,8 +69,6 @@ if [ -f /home/munge.key ]; then
 	dd if=/home/munge.key of=/etc/munge/munge.key
 fi
 
-
-
-bash -c 'apt upgrade -y >/dev/null 2>&1 & disown'
+apt upgrade -y
 
 rm -- "$0"
