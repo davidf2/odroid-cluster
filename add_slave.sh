@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+
 # Carreguem el script network_api.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source ./network_api.sh
@@ -9,7 +10,7 @@ source ./network_api.sh
 export HISTIGNORE=$HISTIGNORE':*sudo -S*:*sshpass*'
 
 # Agafem el nom de l'usuari no root
-master_name=$(echo $(who am i | awk '{print $1}'))
+master_name=$(echo $(who | awk '{print $1}'))
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
 
@@ -28,9 +29,8 @@ add_cron_job() {
 	name="$1"
 	ip="$2"
 	master_name="$3"
-	master_home="$4"
 
-	line="*/1 * * * * root $(dirname $0)/cron_init_slave.sh $name $ip $master_name $master_home >> /tmp/cron_init_slave.log 2>&1"
+	line="*/1 * * * * root $(dirname $0)/cron_init_slave.sh $name $ip $master_name >> /tmp/cron_init_slave.log 2>&1"
 
 	# Si no existeix creem el fitxer crontab, propietat de root i amb permisos limitats
 	if [ ! -f /etc/crontab ]; then
@@ -79,4 +79,4 @@ fi
 echo "Copiant script al slave"
 su $master_name -c "sshpass -p ${default_password} scp init_slave.sh ${name}@${ip}:Documents"
 
-add_cron_job "$name" "$ip" "$master_name" "$master_home"
+add_cron_job "$name" "$ip" "$master_name"

@@ -14,7 +14,6 @@ if [ $# -lt 2 ]; then
 fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
-master_home="$2" # $2 directori home del master
 interface=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
 if [ -z "$interface" ]; then
