@@ -1,16 +1,20 @@
 #!/bin/bash
 
-
+if [ $(echo "$PATH" | grep "$(dirname $0)" | wc -l) -eq 0 ]; then
+        export PATH="$(dirname $0):${PATH}"
+fi
 
 # Carreguem el script network_api.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source ./network_api.sh
+source network_api.sh
 
 # Evitem que es guardi el password al historial
 export HISTIGNORE=$HISTIGNORE':*sudo -S*:*sshpass*'
 
+
+default_password=$(cat /etc/urvcluster.conf | grep "DEFAULT_PASSWORD" | cut -d= -f2)
 # Agafem el nom de l'usuari no root
-master_name=$(echo $(who | awk '{print $1}'))
+master_name=$(cat /etc/urvcluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
 
@@ -23,24 +27,6 @@ ip="$1" # $1 la ip del slave
 name="$2" # $2 nom del slave
 assigned_number="$3"
 passphrase="$4" # $4 passphrase
-
-add_cron_job() {
-
-	name="$1"
-	ip="$2"
-	master_name="$3"
-
-	line="*/1 * * * * root $(dirname $0)/cron_init_slave.sh $name $ip $master_name >> /tmp/cron_init_slave.log 2>&1"
-
-	# Si no existeix creem el fitxer crontab, propietat de root i amb permisos limitats
-	if [ ! -f /etc/crontab ]; then
-		touch /etc/crontab
-		chmod 644 /etc/crontab
-		chown root: /etc/crontab
-	fi
-
-	echo "$line" >> /etc/crontab
-}
 
 # Comprovem que es passi com a minim 3 parametres
 if [ $# -lt 3 ]; then
@@ -63,20 +49,18 @@ chown "$master_name":$(id -gn "$master_name") $KNOWN_HOSTS
 # Copiem la clau publica al slave
 su $name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$ip"
 
+# Copiem el script de inicialització al slave
+su $master_name -c "sshpass -p ${default_password} scp \"$(dirname $0)\"/init_slave.sh ${name}@${ip}:Documents"
 
 # Copiem la clau de munge
-sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${ip}:/etc/munge/munge.key
+sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${name}@${ip}:Documents/munge.key
 
-if [ "$?" -gt 0 ]; then
-	echo "Error: The munge key could not be copied to the host odroid${assigned_number}, this could
-	be due to the fact that the default password of the root user of
-	odroid${assigned_number} has been changed, or access to its ssh server has been
-	blocked by root."
-	# Copiem la clau al directori home
-	dd if=/etc/munge/munge.key of=/home/munge.key 
-fi
 
-echo "Copiant script al slave"
-su $master_name -c "sshpass -p ${default_password} scp init_slave.sh ${name}@${ip}:Documents"
+# Agafem la IP de la xarxa interna
+interface=$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)
+master_ip=$(get_ip_of_nic "$interface")
 
-add_cron_job "$name" "$ip" "$master_name"
+# Executem el script de inicialització al slave
+su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${ip} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip \" >> /tmp/init_slave.out 2>&1"
+
+

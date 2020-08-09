@@ -1,5 +1,9 @@
 #! /bin/bash
 
+if [ $(echo "$PATH" | grep "$(dirname $0)" | wc -l) -eq 0 ]; then
+	export PATH="$(dirname $0):${PATH}"
+fi
+
 LOG_FILE=/var/log/dnsmasq.log
 HOSTS_FILE=/etc/dnsmasq.d/dnsmasq_hosts.conf
 name=$(cat /etc/urvcluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
@@ -18,7 +22,8 @@ add_odroid() {
 			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$name"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
-		/opt/scripts/add_slave.sh "$ip" "$name" "$num_line"
+		#add_slave.sh "$ip" "$name" "$num_line"
+		nohup add_slave.sh "$ip" "$name" "$num_line" >> /tmp/add_slave.out 2>&1 &
 
 		if [ -f /var/run/dnsmasq/dnsmasq.pid ]; then
 			pid=$(cat /var/run/dnsmasq/dnsmasq.pid)

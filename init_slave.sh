@@ -1,19 +1,14 @@
 #!/bin/bash
 
 
-add_munge() {
-	apt install munge -y
-	systemctl enable munge
-	systemctl start munge
-}
-
-if [ $# -lt 2 ]; then
+if [ $# -ne 1 ]; then
 	echo "Error, you must enter 2 parameters, the first corresponding to the IP of the master
 	and the second to your home directory"
 	exit 1
 fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
+
 interface=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
 if [ -z "$interface" ]; then
@@ -27,7 +22,7 @@ echo "nameserver ${master_ip}" > /etc/resolv.conf
 # Protegim el resolv.conf de modificacions
 chattr +i /etc/resolv.conf
 
-#Fiquem a zona horaria i actualitzem l'hora
+# Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
 ntpdate -u hora.roa.es
 
@@ -48,10 +43,14 @@ apt autoclean -y
 
 # Instal.lem el client NFS
 apt install nfs-common -y
-add_munge
 
-chown munge:munge ~/Documents/munge.key
+# Instal.lem munge
+apt install munge -y
+systemctl enable --now munge
+
+
 cp -p ~/Documents/munge.key /etc/munge && rm ~/Documents/munge.key
+chown munge:munge /etc/munge/munge.key
 systemctl restart munge
 
 host_name=$(hostnamectl | grep Transient | awk '{print $3}')
@@ -64,10 +63,6 @@ mount -a || echo "Error: Check the /etc/fstab file, probably the shared director
 not be mounted using NFS (Network File System), do not restart
 ${host_name} before solving this problem."
 
-if [ -f /home/munge.key ]; then
-	dd if=/home/munge.key of=/etc/munge/munge.key
-fi
-
-apt upgrade -y
+nohup apt upgrade -y 2>&1 &
 
 rm -- "$0"
