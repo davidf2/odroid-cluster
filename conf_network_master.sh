@@ -66,7 +66,8 @@ iface $interface2 inet static
     address $ip
     netmask $mask" > /etc/network/interfaces
 
-echo "$ip master" >> /etc/hosts
+echo "$ip master" >> /etc/hosts.d/lan_hosts
+echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
 
 line=$(cat /etc/hosts | grep 127.0.0.1)
 host=$(echo $(who am i | awk '{print $1}'))

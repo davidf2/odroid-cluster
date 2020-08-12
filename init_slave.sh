@@ -30,7 +30,7 @@ ntpdate -u hora.roa.es
 apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 
 # Actualitzem
-apt update -y
+apt-get update -y
 
 # Desactivem autentificació mitjançant usuari root
 #sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -42,10 +42,10 @@ apt autoremove -y
 apt autoclean -y
 
 # Instal.lem el client NFS
-apt install nfs-common -y
+apt-get install nfs-common -y
 
 # Instal.lem munge
-apt install munge -y
+apt-get install munge -y
 systemctl enable --now munge
 
 
@@ -63,6 +63,6 @@ mount -a || echo "Error: Check the /etc/fstab file, probably the shared director
 not be mounted using NFS (Network File System), do not restart
 ${host_name} before solving this problem."
 
-nohup apt upgrade -y 2>&1 &
+nohup apt-get upgrade -y 2>&1 &
 
 rm -- "$0"

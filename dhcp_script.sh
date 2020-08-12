@@ -22,8 +22,8 @@ add_odroid() {
 			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$name"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
-		#add_slave.sh "$ip" "$name" "$num_line"
-		nohup add_slave.sh "$ip" "$name" "$num_line" >> /tmp/add_slave.out 2>&1 &
+		# Afegim la ip i nom de host per a poder canviar inmediatament el nom
+		echo "${ip} ${name}${num_line}" >> /etc/hosts.d/tmp_hosts
 
 		if [ -f /var/run/dnsmasq/dnsmasq.pid ]; then
 			pid=$(cat /var/run/dnsmasq/dnsmasq.pid)
@@ -35,9 +35,15 @@ add_odroid() {
 			fi
 		fi
 
-		# Enviem senyal SIGKILL al proces per a que reinicii el dimoni
-		# 	i d'aquesta manera llegeixi inmediatament el fitxer de hosts especificat
-		kill -9 "$pid"
+		# Enviem senyal SIGHUP al proces per a que rellegeixi el fitxer de hosts especificat
+		kill -HUP "$pid"
+
+		echo "" > /etc/hosts.d/tmp_hosts
+
+		# Afegim el nou slave i l'inicialitzem
+		nohup add_slave.sh "${name}${num_line}" "$name" "$num_line" >> /tmp/add_slave.out 2>&1 &
+
+		
     fi
 }
 
