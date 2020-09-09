@@ -134,7 +134,7 @@ add_nfs() {
 	ip="$1"
 	mask="$2"
 	apt-get install nfs-kernel-server -y
-	echo "/home $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+	echo "/home $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,no_root_squash,no_subtree_check)" >> /etc/exports
 	exportfs -arv
 
 	systemctl enable --now nfs-kernel-server
@@ -156,7 +156,6 @@ fi
 cp -p dhcp_script.sh /opt/scripts/
 # Copiem els scripts dependents
 cp -p init_slave.sh /opt/scripts/
-cp -p cron_init_slave.sh /opt/scripts/
 cp -p add_slave.sh /opt/scripts/
 cp -p network_api.sh /opt/scripts/
 cp -p urvcluster.conf /etc

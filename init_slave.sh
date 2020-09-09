@@ -58,7 +58,7 @@ if [ -z "$host_name" ]; then
 	host_name=$(hostnamectl | grep Static | awk '{print $3}')
 fi
 
-echo "${master_ip}:/home /home nfs rw,async,auto 0 0" >> /etc/fstab 
+echo "${master_ip}:/home /home nfs rw,auto 0 0" >> /etc/fstab 
 mount -a || echo "Error: Check the /etc/fstab file, probably the shared directory could
 not be mounted using NFS (Network File System), do not restart
 ${host_name} before solving this problem."
