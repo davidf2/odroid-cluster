@@ -54,6 +54,25 @@ add_ssh() {
 	#systemctl restart fail2ban
 }
 
+add_resolvconf() {
+
+	dns_ip="$1"
+
+	# Instal.lem el dimoni resolvconf
+	apt-get install resolvconf -y
+
+	# Habilitem i reiniciem el dimoni de resolvconf
+	systemctl enable resolvconf
+	systemctl start resolvconf
+
+	# Copiem el contingut de original a tail, per a que renovi el contingut
+	echo "nameserver ${dns_ip}" > /etc/resolvconf/resolv.conf.d/head
+
+	# Actualitzem els DNS
+	resolvconf --enable-updates
+	resolvconf -u
+}
+
 add_dnsmasq() {
 
 	if [ $# -lt 1 ]; then
@@ -62,9 +81,18 @@ add_dnsmasq() {
 	fi
 
 	ip="$1"
+	lan_interface="$4"
 
-	# Instal.lem dnsmasq i el dimoni resolvconf
-	apt-get install dnsmasq -y
+	# Instal.lem dnsmasq i el deshabilitem
+	apt-get install dnsmasq -y 2> /dev/null
+	systemctl disable --now dnsmasq
+
+	# Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
+	systemctl disable systemd-resolved
+	systemctl stop systemd-resolved
+
+	# Descomentem
+	sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf
 
 	# Si no existeix fem una copia de seguretat del fitxer dnsmasq.conf
 	if [[ ( ! -f /etc/dnsmasq.conf.back ) && ( -f /etc/dnsmasq.conf ) ]]; then
@@ -73,15 +101,16 @@ add_dnsmasq() {
 
 	# Carreguem la configuració per a dnsmasq
 	echo "
-	listen-address=127.0.0.1,${ip}
+	listen-address=${ip}
 	server=${EXTERNALDNS1}
 	server=${EXTERNALDNS2}
 	domain-needed
 	bogus-priv
 	no-resolv
+	no-hosts
 	hostsdir=/etc/hosts.d
 	
-	interface=eth1
+	interface=${lan_interface}
 	dhcp-range=${ip},172.16.0.254,12h
 	# Establecer la puerta de enlace predeterminada.
 	dhcp-option=3,${ip}
@@ -91,10 +120,17 @@ add_dnsmasq() {
 	dhcp-script=/opt/scripts/dhcp_script.sh
 	" > /etc/dnsmasq.conf
 
-	# Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
-	systemctl stop systemd-resolved
-	systemctl disable systemd-resolved
+	rm /etc/resolv.conf
+	# Afegim la propia maquina com a servidor DNS
+	echo "nameserver 127.0.0.1" > /etc/resolv.conf
 
+	# Reiniciem i habilitem el dimoni de dnsmasq
+	systemctl enable dnsmasq
+	systemctl start dnsmasq
+
+	add_resolvconf "127.0.0.1"
+
+	
 }
 
 install_nic_driver() {
@@ -142,9 +178,9 @@ add_nfs() {
 
 add_munge() {
 	apt-get install munge -y
+	systemctl enable --now munge
 	/usr/sbin/create-munge-key -f
-	systemctl enable munge
-	systemctl start munge
+	systemctl restart munge
 }
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
@@ -173,7 +209,6 @@ apt-get update -y
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
 apt-get install ntpdate -y ; ntpdate -u hora.roa.es
-
 
 
 # Evitem que el dialeg amb la GUI durant la instal.lació de iptables-persistent 
@@ -209,22 +244,11 @@ add_vnc
 
 add_nfs "${net_array[0]}" "${net_array[1]}"
 
-# Instal.lem el servidor dns i dhcp dnsmasq i el configurem
-add_dnsmasq "${net_array[0]}"
-
-# Descomentem
-sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf
-
-rm /etc/resolv.conf && touch /etc/resolv.conf
-# Afegim la propia maquina com a servidor DNS
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
-chattr +i /etc/resolv.conf
-
-# Reiniciem i habilitem el dimoni de dnsmasq
-systemctl restart dnsmasq
-systemctl enable dnsmasq
-
 add_munge
+
+# Instal.lem el servidor dns i dhcp dnsmasq i el configurem
+# AQUEST SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
+add_dnsmasq "${net_array[0]}"
 
 # Actualitzem per no tindre problemes amb modificacións a les instalacions anteriors
 #	amb actualitzacions al kernel

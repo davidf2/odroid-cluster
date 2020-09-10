@@ -36,18 +36,14 @@ fi
 
 # Si no existeixen generem el parell de claus
 if [ ! -f "$KEY_FILE" ]; then
-	ssh-keygen -q -t rsa -f "$KEY_FILE" -N "$passphrase"
-	# Modifiquem l'usuari propietari a odroid i com a grup el seu grup primari
-	chown "$master_name":$(id -gn "$master_name") $KEY_FILE
+	su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE" -N "$passphrase\""
 fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
-echo "$(ssh-keyscan -H $ip)" >> $KNOWN_HOSTS
-# Modifiquem l'usuari propietari a odroid i com a grup el seu grup primari
-chown "$master_name":$(id -gn "$master_name") $KNOWN_HOSTS
+su $master_name -c "echo \"$(ssh-keyscan -H $ip)\" >> $KNOWN_HOSTS"
 
 # Copiem la clau publica al slave
-su $name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$ip"
+su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$ip"
 
 # Copiem el script de inicialització al slave
 su $master_name -c "sshpass -p ${default_password} scp \"$(dirname $0)\"/init_slave.sh ${name}@${ip}:Documents"
