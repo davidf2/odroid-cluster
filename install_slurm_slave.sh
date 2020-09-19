@@ -1,25 +1,38 @@
 #! /bin/bash
 
+
 master_ip=$1
 version=$2
 
-mkdir /usr/local/src/slurm-$"version"
-mkdir /usr/local/slurm
-echo "${master_ip}:/usr/local/src/slurm-${version} /usr/local/src/slurm-${version} nfs rw,async,auto 0 0" >> /etc/fstab
-mount -a
+useradd -M slurm --shell /usr/sbin/nologin --home-dir /nonexistent --password "*"
 
-cd /usr/local/src/slurm-$"version"
+# Instal.lem dependencies
+apt-get  install libfreeipmi-dev libhwloc-dev freeipmi libmunge-dev -y
+
+mkdir /usr/local/src/slurm-"$version"
+mkdir /usr/local/slurm
+mount "$master_ip":/usr/local/src/slurm-"$version" /usr/local/src/slurm-"$version"
+
+cd /usr/local/src/slurm-"$version"
 make install
 
-echo "${master_ip}:/usr/local/slurm /usr/local/slurm nfs rw,async,auto 0 0" >> /etc/fstab
-mount -a
+mkdir /usr/local/slurm/etc
+if [ $(cat /etc/exports | grep "/usr/local/slurm/etc" | wc -l) -eq 0 ]; then
+	echo "${master_ip}:/usr/local/slurm/etc /usr/local/slurm/etc nfs rw,auto 0 0" >> /etc/fstab
+fi
+mount /usr/local/slurm/etc
 
-echo "export PATH=${PATH}:\"/usr/local/slurm/bin\"" >> /etc/profile
-echo "export PATH=${PATH}:\"/usr/local/slurm/sbin\"" >> /etc/profile
-bash -c "echo \"export PATH=${PATH}:\"/usr/local/slurm/bin\"\" >> /root/.profile"
-bash -c "echo \"export PATH=${PATH}:\"/usr/local/slurm/sbin\"\" >> /root/.profile"
+# Creem enllaços simbolics per a poder executar comandes de slurm mitjançant qualsevol usuari
+ln -s /usr/local/slurm/sbin/* /usr/sbin/
+ln -s /usr/local/slurm/bin/* /usr/bin/
 
+# Copiem el slurmd.service al directori pertinent
 cp -ap /usr/local/src/slurm-20.02.4/etc/slurmd.service /etc/systemd/system/
+
+mkdir /var/spool/slurmd
+chown slurm: /var/spool/slurmd
 
 systemctl enable slurmd
 systemctl start slurmd
+
+umount /usr/local/src/slurm-"$version

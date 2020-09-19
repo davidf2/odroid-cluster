@@ -7,9 +7,11 @@ export PATH="$(dirname $0):${PATH}"
 #	poder fer servir les seves funcions
 source ./network_api.sh
 
-SCRIPTS_DIR=/opt/urvcluster
+SCRIPTS_DIR=/opt/scripts
 EXTERNALDNS1="8.8.8.8"
 EXTERNALDNS2="8.8.4.4"
+
+name=$(cat /etc/urvcluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
 
 add_ssh() {
 	# Instal.lem openssh server
@@ -158,7 +160,7 @@ add_vnc() {
 	#!/bin/bash
 	xrdb $HOME/.Xresources
 	startxfce4 &
-	" > ~/.vnc/xstartup
+	" > $(eval echo "~$name")/.vnc/xstartup
 }
 
 add_nfs() {
@@ -173,7 +175,8 @@ add_nfs() {
 	echo "/home $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,no_root_squash,no_subtree_check)" >> /etc/exports
 	exportfs -arv
 
-	systemctl enable --now nfs-kernel-server
+	systemctl enable nfs-kernel-server
+	systemctl restart nfs-kernel-server
 }
 
 add_munge() {
@@ -196,6 +199,7 @@ cp -p add_slave.sh /opt/scripts/
 cp -p network_api.sh /opt/scripts/
 cp -p urvcluster.conf /etc
 
+
 # Instal.lem el driver de la targeta de xarxa 
 install_nic_driver
 
@@ -210,6 +214,7 @@ apt-get update -y
 timedatectl set-timezone Europe/Madrid
 apt-get install ntpdate -y ; ntpdate -u hora.roa.es
 
+hostnamectl set-hostname master
 
 # Evitem que el dialeg amb la GUI durant la instal.lació de iptables-persistent 
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections

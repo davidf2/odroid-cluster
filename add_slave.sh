@@ -36,7 +36,7 @@ fi
 
 # Si no existeixen generem el parell de claus
 if [ ! -f "$KEY_FILE" ]; then
-	su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE" -N "$passphrase\""
+	su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE\" -N \"$passphrase\""
 fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
@@ -57,6 +57,6 @@ interface=$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)
 master_ip=$(get_ip_of_nic "$interface")
 
 # Executem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${ip} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip \" >> /tmp/init_slave.out 2>&1"
+su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${ip} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $ip \" >> /tmp/init_slave.out 2>&1"
 
 

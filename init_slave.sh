@@ -26,6 +26,7 @@ if [ $# -ne 1 ]; then
 fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
+name="$2"
 
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
@@ -39,12 +40,8 @@ while [[ $(ping 8.8.8.8 -I "$nic" -w2 2> /dev/null | grep "received" | cut -d " 
 	sleep 2
 done
 
+hostnamectl set-hostname $name
 
-# Deshabilitem el dimoni systemd-resolved per a que no canvii la configuració del DNS
-systemctl disable systemd-resolved
-systemctl stop systemd-resolved
-
-rm /etc/resolv.conf
 # Fixem com a DNS el master
 echo "nameserver ${master_ip}" > /etc/resolv.conf
 # Instal.lem el dimoni resolvconf
