@@ -99,26 +99,26 @@ check_interfaces() {
 	# Cerca la NIC amb connexió a internet
 	for nic in $(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1)); do
 		if [[ $(ping 8.8.8.8 -I $nic -w2 2> /dev/null | grep "received" | cut -d " " -f4) -gt 0 ]]; then
-			interface="$nic"
+			net_interface="$nic"
 		else
-			interface2="$nic"
+			lan_interface="$nic"
 		fi
 	done
 	IFS=$OLDIFS
 
 	# Comprovació final
-	if [[ -z "$interface" ]]; then
+	if [[ -z "$net_interface" ]]; then
 		echo "ERROR: No internet connected interfaces found" 1>&2
 		return 1
 	fi
 
 	# Comprovació final
-	if [[ -z "$interface2" ]]; then
+	if [[ -z "$lan_interface" ]]; then
 		echo "ERROR: Not found the second network interface" 1>&2
 		return 1
 	fi
 
-	echo "$interface;$interface2"
+	echo "$net_interface;$lan_interface"
 }
 
 # Funció que retorna una ip, segons una interficie de xarxa pasada per parametre.

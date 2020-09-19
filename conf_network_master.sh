@@ -37,7 +37,7 @@ while getopts ":i:m:n:" opt; do
 		;;
 
 	-n)
-		interface2=$OPTARG
+		lan_interface=$OPTARG
 		;;
     \?)
 		echo "Invalid option: $OPTARG" 1>&2
@@ -49,19 +49,16 @@ while getopts ":i:m:n:" opt; do
   esac
 done
 
-
-if [[ -z "$interface" ]]; then
-	result=$(check_interfaces)
-	if [[ $? -ne 0 ]]; then 
-		exit 1
-	fi
-	interface=$(echo $result | cut -d ";" -f 1)
-	interface2=$(echo $result | cut -d ";" -f 2)
+result=$(check_interfaces)
+if [[ $? -ne 0 ]]; then 
+	exit 1
 fi
+net_interface=$(echo $result | cut -d ";" -f 1)
+lan_interface=$(echo $result | cut -d ";" -f 2)
 
 echo "
-auto $interface2
-iface $interface2 inet static
+auto $lan_interface
+iface $lan_interface inet static
     address $ip
     netmask $mask" > /etc/network/interfaces
 
@@ -73,8 +70,8 @@ host=$(echo $(who am i | awk '{print $1}'))
 sed -i 's/^'"$line"'.*/'"$line"' '"$host"'/g' /etc/hosts
 
 # Reiniciem la interficie de xarxa (xarxa interna)
-ifdown $interface2
-ifup $interface2
+ifdown $lan_interface
+ifup $lan_interface
 
 # Habilitem de forma permanent el forwarding, descomentant la linia pertinent
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
@@ -82,12 +79,12 @@ sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 sysctl -p
 
 # Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
-iptables -t nat -A POSTROUTING -o $interface -j MASQUERADE
+iptables -t nat -A POSTROUTING -o $net_interface -j MASQUERADE
 
 # Guardem els canvis a iptables de forma permanentment
 bash -c "iptables-save > /etc/iptables/rules.v4"
 bash -c "iptables-save > /etc/iptables/rules.v6"
 
 # Retornem els resultats
-echo "$ip;$mask;$interface;$interface2"
+echo "$ip;$mask;$net_interface;$lan_interface"
 
