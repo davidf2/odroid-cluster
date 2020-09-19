@@ -1,5 +1,7 @@
 #! /bin/bash
 
+scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
+
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source network_lib.sh
@@ -30,7 +32,7 @@ add_odroid() {
 		echo "${ip} ${name}${num_line}" >> /etc/hosts.d/tmp_hosts
 
 		# Afegim el nou slave i l'inicialitzem
-		nohup add_slave.sh "${name}${num_line}" "$name" >> /tmp/add_slave_"${name}${num_line}".out 2>&1 &
+		nohup "${scripts_path}/add_slave.sh" "${name}${num_line}" "$name" >> /tmp/add_slave_"${name}${num_line}".out 2>&1 &
 
     fi
 }

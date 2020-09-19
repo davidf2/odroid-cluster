@@ -1,14 +1,15 @@
 #!/bin/bash
 
 
+scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
 
+cp -p urvcluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/
 
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source network_lib.sh
 
-SCRIPTS_DIR=/opt/scripts
 externaldns1="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
 externaldns2="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
 
@@ -119,7 +120,7 @@ add_dnsmasq() {
 	# Establecer servidores DNS para anunciar
 	dhcp-option=6,${ip}
 
-	dhcp-script=/opt/scripts/dhcp_script.sh
+	dhcp-script=${scripts_path}/dhcp_script.sh
 	" > /etc/dnsmasq.conf
 
 	rm /etc/resolv.conf
@@ -136,16 +137,19 @@ add_dnsmasq() {
 }
 
 install_nic_driver() {
-	# Instal.lant driver USB NIC
-	apt-get install wget -y
-	wget https://www.asix.com.tw/FrootAttach/driver/AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
-	tar -xjvf AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
-	make -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
-	make install -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
-	modprobe asix
-	ifup --all
-	rm -f AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
-	rm -rf AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
+
+	if[ $(lsusb | grep "7720 ASIX Electronics Corp. AX88772" | wc -l) -gt 0 ]; then
+		# Instal.lant driver USB NIC
+		apt-get install wget -y
+		wget https://www.asix.com.tw/FrootAttach/driver/AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
+		tar -xjvf AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
+		make -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
+		make install -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
+		modprobe asix
+		ifup --all
+		rm -f AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
+		rm -rf AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
+	fi
 }
 
 add_vnc() {
@@ -172,7 +176,9 @@ add_nfs() {
 	ip="$1"
 	mask="$2"
 	apt-get install nfs-kernel-server -y
-	echo "/home $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,no_root_squash,no_subtree_check)" >> /etc/exports
+	ip_net="$(calculate_network_ip $ip $mask)"
+	mask_cidr="$(mask_to_cidr $mask)"
+	echo "/home ${ip_net}${mask_cidr} (rw,no_root_squash,no_subtree_check)" >> /etc/exports
 	exportfs -arv
 
 	systemctl enable nfs-kernel-server
@@ -208,16 +214,16 @@ clean_tmp_hosts() {
 }
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
-if [ ! -d /opt/scripts ]; then
-	mkdir /opt/scripts
+if [ ! -d "$scripts_path" ]; then
+	mkdir "$scripts_path"
 fi
 
 # Copiem el fitxer que s'executa cada cop que el servidor dhcp fa una modificació
-cp -p dhcp_script.sh /opt/scripts/
+cp -p dhcp_script.sh "$scripts_path"/
 # Copiem els scripts dependents
-cp -p init_slave.sh /opt/scripts/
-cp -p add_slave.sh /opt/scripts/
-cp -p urvcluster.conf /etc
+cp -p init_slave.sh "$scripts_path"/
+cp -p add_slave.sh "$scripts_path"/
+
 
 
 # Instal.lem el driver de la targeta de xarxa 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
+
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source network_lib.sh
@@ -41,7 +43,7 @@ su $master_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
 su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$host"
 
 # Copiem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} scp \"$(dirname $0)\"/init_slave.sh ${name}@${host}:Documents"
+su $master_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${name}@${host}:Documents"
 
 # Copiem la clau de munge
 sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${name}@${host}:Documents/munge.key
