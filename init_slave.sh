@@ -49,8 +49,7 @@ get_ip_of_nic() {
 }
 
 if [ $# -ne 1 ]; then
-	echo "Error, you must enter 2 parameters, the first corresponding to the IP of the master
-	and the second to your home directory"
+	echo "Error, you must enter one parameter, corresponding to the IP or host of the master"
 	exit 1
 fi
 
@@ -59,7 +58,7 @@ master_ip="$1" # $1 ip del master a la lan odroid
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
 if [ -z "$nic" ]; then
-      echo "Error, no network nics found"
+      echo "Error, no NIC found"
       exit 1
 fi
 

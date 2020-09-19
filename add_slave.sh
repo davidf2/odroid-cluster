@@ -26,7 +26,7 @@ name="$2" # $2 nom del slave
 passphrase="$3" # $4 passphrase
 
 # Comprovem que es passi com a minim 3 parametres
-if [ $# -lt 3 ]; then
+if [ $# -lt 2 ]; then
 	echo -e "Error, at least you have to enter 3 parameters, for more information \n\t add_slave -h"
 	exit 1
 fi

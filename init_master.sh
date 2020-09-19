@@ -69,8 +69,10 @@ add_resolvconf() {
 	systemctl enable resolvconf
 	systemctl start resolvconf
 
+	echo "nameserver ${dns_ip}" > /etc/resolvconf/resolv.conf.d/tail
+
 	# Afegim els externals dns a tail per a que els afegeixi a /etc/resolv.conf
-	echo "nameserver ${externaldns1}" > /etc/resolvconf/resolv.conf.d/tail
+	echo "nameserver ${externaldns1}" >> /etc/resolvconf/resolv.conf.d/tail
 	echo "nameserver ${externaldns2}" >> /etc/resolvconf/resolv.conf.d/tail
 
 	# Actualitzem els DNS
@@ -123,22 +125,21 @@ add_dnsmasq() {
 	dhcp-script=${scripts_path}/dhcp_script.sh
 	" > /etc/dnsmasq.conf
 
-	rm /etc/resolv.conf
+	#rm /etc/resolv.conf
+	
 	# Afegim la propia maquina com a servidor DNS
-	echo "nameserver 127.0.0.1" > /etc/resolv.conf
+	#echo "nameserver 127.0.0.1" > /etc/resolv.conf
 
 	# Reiniciem i habilitem el dimoni de dnsmasq
 	systemctl enable dnsmasq
 	systemctl start dnsmasq
-
-	add_resolvconf "127.0.0.1"
 
 	
 }
 
 install_nic_driver() {
 
-	if[ $(lsusb | grep "7720 ASIX Electronics Corp. AX88772" | wc -l) -gt 0 ]; then
+	if [ $(lsusb | grep "7720 ASIX Electronics Corp. AX88772" | wc -l) -gt 0 ]; then
 		# Instal.lant driver USB NIC
 		apt-get install wget -y
 		wget https://www.asix.com.tw/FrootAttach/driver/AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
@@ -276,6 +277,8 @@ add_nfs "${net_array[0]}" "${net_array[1]}"
 add_munge
 
 clean_tmp_hosts
+
+add_resolvconf "127.0.0.1"
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AQUEST SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE

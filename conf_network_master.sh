@@ -7,7 +7,7 @@ source network_lib.sh
 
 # Default values
 ip="172.16.0.1"
-mask="255.255.255.0"
+mask="255:255:255:0"
 class="B"
 
 while getopts ":i:m:n:" opt; do
@@ -60,7 +60,7 @@ echo "
 auto $lan_interface
 iface $lan_interface inet static
     address $ip
-    netmask $mask" > /etc/network/interfaces
+    netmask ${mask//:/.}" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
 echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
