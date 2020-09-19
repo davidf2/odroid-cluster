@@ -1,8 +1,6 @@
 #!/bin/bash
 
 
-scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
-
 cp -p urvcluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/
 
@@ -10,6 +8,7 @@ cp -p network_lib.sh /usr/local/sbin/
 #	poder fer servir les seves funcions
 source network_lib.sh
 
+scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
 externaldns1="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
 externaldns2="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
 
@@ -179,7 +178,7 @@ add_nfs() {
 	apt-get install nfs-kernel-server -y
 	ip_net="$(calculate_network_ip $ip $mask)"
 	mask_cidr="$(mask_to_cidr $mask)"
-	echo "/home ${ip_net}${mask_cidr} (rw,no_root_squash,no_subtree_check)" >> /etc/exports
+	echo "/home ${ip_net}${mask_cidr}(rw,no_root_squash,no_subtree_check)" >> /etc/exports
 	exportfs -arv
 
 	systemctl enable nfs-kernel-server
