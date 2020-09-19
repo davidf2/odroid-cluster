@@ -19,6 +19,35 @@ add_resolvconf() {
 	resolvconf -u
 }
 
+get_ip_of_nic() {
+	
+	if [ $# -lt 1 ]; then
+		echo "Error, you have to enter 1 parameter corresponding to the network interface."
+		exit 1
+	fi
+
+	interface="$1"
+
+	nic_info=$(ip -4 a show $interface)
+	nic_ip=""
+
+	OLDIFS=$IFS
+	IFS=$' '
+	for ip in $(echo $(hostname -I)); do
+		if [ $(echo "$nic_info" | grep "$ip" | wc -l) -gt 0 ]; then
+			nic_ip="$ip"
+		fi
+	done
+	IFS=$OLDIFS
+
+	if [ -z $nic_ip ]; then
+		echo "Error: The ip assigned to the interface ${interface} was not found"
+		exit 1
+	fi
+
+	echo "$nic_ip"
+}
+
 if [ $# -ne 1 ]; then
 	echo "Error, you must enter 2 parameters, the first corresponding to the IP of the master
 	and the second to your home directory"
@@ -26,7 +55,6 @@ if [ $# -ne 1 ]; then
 fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
-name="$2"
 
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
@@ -39,8 +67,6 @@ fi
 while [[ $(ping 8.8.8.8 -I "$nic" -w2 2> /dev/null | grep "received" | cut -d " " -f4) -eq 0 ]]; do
 	sleep 2
 done
-
-hostnamectl set-hostname $name
 
 # Fixem com a DNS el master
 echo "nameserver ${master_ip}" > /etc/resolv.conf
@@ -88,6 +114,11 @@ mount -a || echo "Error: Check the /etc/fstab file, probably the shared director
 not be mounted using NFS (Network File System), do not restart
 ${host_name} before solving this problem."
 
+echo "Soy $(get_ip_of_nic $nic) solo me queda hacer upgrade" >> ~/odroid
+
 nohup apt-get upgrade -y 2>&1 &
 
+echo "Soy $(get_ip_of_nic $nic) ya he finalizado la inicialización" >> ~/odroid
+
+# Esborrem el propi script
 rm -- "$0"

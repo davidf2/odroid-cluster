@@ -1,12 +1,8 @@
 #!/bin/bash
 
-if [ $(echo "$PATH" | grep "$(dirname $0)" | wc -l) -eq 0 ]; then
-        export PATH="$(dirname $0):${PATH}"
-fi
-
-# Carreguem el script network_api.sh com a una llibreria, per 
+# Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source network_api.sh
+source network_lib.sh
 
 # Evitem que es guardi el password al historial
 export HISTIGNORE=$HISTIGNORE':*sudo -S*:*sshpass*'
@@ -23,10 +19,9 @@ KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 default_password=$(cat /etc/urvcluster.conf | grep "DEFAULT_PASSWORD" | cut -d= -f2)
 
-ip="$1" # $1 la ip del slave
+host="$1" # $1 la ip del slave
 name="$2" # $2 nom del slave
-assigned_number="$3"
-passphrase="$4" # $4 passphrase
+passphrase="$3" # $4 passphrase
 
 # Comprovem que es passi com a minim 3 parametres
 if [ $# -lt 3 ]; then
@@ -40,23 +35,23 @@ if [ ! -f "$KEY_FILE" ]; then
 fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
-su $master_name -c "echo \"$(ssh-keyscan -H $ip)\" >> $KNOWN_HOSTS"
+su $master_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
 
 # Copiem la clau publica al slave
-su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$ip"
+su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$host"
 
 # Copiem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} scp \"$(dirname $0)\"/init_slave.sh ${name}@${ip}:Documents"
+su $master_name -c "sshpass -p ${default_password} scp \"$(dirname $0)\"/init_slave.sh ${name}@${host}:Documents"
 
 # Copiem la clau de munge
-sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${name}@${ip}:Documents/munge.key
+sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${name}@${host}:Documents/munge.key
 
 
 # Agafem la IP de la xarxa interna
-interface=$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)
-master_ip=$(get_ip_of_nic "$interface")
+interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
+master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${ip} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $ip \" >> /tmp/init_slave.out 2>&1"
+su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip \" >> /tmp/init_slave_${host}.out 2>&1"
 
 

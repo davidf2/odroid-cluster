@@ -1,10 +1,9 @@
 #!/bin/bash
 
-export PATH="$(dirname $0):${PATH}"
 
-# Carreguem el script network_api.sh com a una llibreria, per 
+# Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source ./network_api.sh
+source network_lib.sh
 
 # Default values
 ip="172.16.0.1"
@@ -67,7 +66,7 @@ iface $interface2 inet static
     netmask $mask" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
-#echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
+echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
 
 line=$(cat /etc/hosts | grep 127.0.0.1)
 host=$(echo $(who am i | awk '{print $1}'))

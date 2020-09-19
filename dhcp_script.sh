@@ -1,8 +1,8 @@
 #! /bin/bash
 
-if [ $(echo "$PATH" | grep "$(dirname $0)" | wc -l) -eq 0 ]; then
-	export PATH="$(dirname $0):${PATH}"
-fi
+# Carreguem el script network_lib.sh com a una llibreria, per 
+#	poder fer servir les seves funcions
+source network_lib.sh
 
 LOG_FILE=/var/log/dnsmasq.log
 HOSTS_FILE=/etc/dnsmasq.d/dnsmasq_hosts.conf
@@ -16,34 +16,22 @@ ip=$3
 add_odroid() {
     if [[ ! $(cat $HOSTS_FILE | grep ^dhcp-host=$mac) ]]; then
 		num_line=$(expr $(cat $HOSTS_FILE | grep ^dhcp-host | wc -l) + 1)
+
+		# Assignem una ip i hostname fix a la nova MAC
+		# (Aquests canvis nomes es produeixen al reiniciar dnsmasq)
 		if [[ "$num_line" -gt $(cat $HOSTS_FILE | wc -l) ]]; then
 			echo "dhcp-host=$mac,$name$num_line,$ip" >> $HOSTS_FILE
 		else
 			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$name"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
-		# Afegim la ip i nom de host per a poder canviar inmediatament el nom
+		# Assignem un hostname a una ip de forma temporal.
+		# (Aquests canvis es realitzen automaticament)
 		echo "${ip} ${name}${num_line}" >> /etc/hosts.d/tmp_hosts
 
-		if [ -f /var/run/dnsmasq/dnsmasq.pid ]; then
-			pid=$(cat /var/run/dnsmasq/dnsmasq.pid)
-		else
-			pid=$(pgrep -f dnsmasq | head -n1)
-			if [ -z "$pid"]; then
-				echo -e "Error: Could not get PID from dnsmasq, make sure it is running with 
-						\tsystemctl start dnsmasq\nor installed with \n\tapt-get install dnsmasq"
-			fi
-		fi
-
-		# Enviem senyal SIGHUP al proces per a que rellegeixi el fitxer de hosts especificat
-		kill -HUP "$pid"
-
-		echo "" > /etc/hosts.d/tmp_hosts
-
 		# Afegim el nou slave i l'inicialitzem
-		nohup add_slave.sh "${name}${num_line}" "$name" "$num_line" >> /tmp/add_slave.out 2>&1 &
+		nohup add_slave.sh "${name}${num_line}" "$name" >> /tmp/add_slave_"${name}${num_line}".out 2>&1 &
 
-		
     fi
 }
 

@@ -1,15 +1,16 @@
 #!/bin/bash
 
 
-export PATH="$(dirname $0):${PATH}"
 
-# Carreguem el script network_api.sh com a una llibreria, per 
+cp -p network_lib.sh /usr/local/sbin/
+
+# Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source ./network_api.sh
+source network_lib.sh
 
 SCRIPTS_DIR=/opt/scripts
-EXTERNALDNS1="8.8.8.8"
-EXTERNALDNS2="8.8.4.4"
+externaldns1="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
+externaldns2="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
 
 name=$(cat /etc/urvcluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
 
@@ -67,8 +68,9 @@ add_resolvconf() {
 	systemctl enable resolvconf
 	systemctl start resolvconf
 
-	# Copiem el contingut de original a tail, per a que renovi el contingut
-	echo "nameserver ${dns_ip}" > /etc/resolvconf/resolv.conf.d/head
+	# Afegim els externals dns a tail per a que els afegeixi a /etc/resolv.conf
+	echo "nameserver ${externaldns1}" > /etc/resolvconf/resolv.conf.d/tail
+	echo "nameserver ${externaldns2}" >> /etc/resolvconf/resolv.conf.d/tail
 
 	# Actualitzem els DNS
 	resolvconf --enable-updates
@@ -104,13 +106,11 @@ add_dnsmasq() {
 	# Carreguem la configuració per a dnsmasq
 	echo "
 	listen-address=${ip}
-	server=${EXTERNALDNS1}
-	server=${EXTERNALDNS2}
 	domain-needed
 	bogus-priv
-	no-resolv
 	no-hosts
 	hostsdir=/etc/hosts.d
+	strict-order
 	
 	interface=${lan_interface}
 	dhcp-range=${ip},172.16.0.254,12h
@@ -186,6 +186,27 @@ add_munge() {
 	systemctl restart munge
 }
 
+clean_tmp_hosts() {
+
+	# Afegim un nou servei que s'encarrega de netejar el fitxer de 
+	# hosts temporal al tancar el sistema
+	echo "[Unit]
+	Description=Clean /etc/hosts.d/tmp_hosts file
+	DefaultDependencies=no
+	Before=shutdown.target
+
+	[Service]
+	Type=oneshot
+	ExecStart=/bin/sh -c 'echo "" > /etc/hosts.d/tmp_hosts'
+	TimeoutStartSec=0
+
+	[Install]
+	WantedBy=shutdown.target" > /etc/systemd/system/clean_tmp_hosts.service
+	
+	systemctl enable clean_tmp_hosts.service
+	
+}
+
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d /opt/scripts ]; then
 	mkdir /opt/scripts
@@ -196,7 +217,6 @@ cp -p dhcp_script.sh /opt/scripts/
 # Copiem els scripts dependents
 cp -p init_slave.sh /opt/scripts/
 cp -p add_slave.sh /opt/scripts/
-cp -p network_api.sh /opt/scripts/
 cp -p urvcluster.conf /etc
 
 
@@ -213,8 +233,6 @@ apt-get update -y
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
 apt-get install ntpdate -y ; ntpdate -u hora.roa.es
-
-hostnamectl set-hostname master
 
 # Evitem que el dialeg amb la GUI durant la instal.lació de iptables-persistent 
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
@@ -250,6 +268,8 @@ add_vnc
 add_nfs "${net_array[0]}" "${net_array[1]}"
 
 add_munge
+
+clean_tmp_hosts
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AQUEST SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE

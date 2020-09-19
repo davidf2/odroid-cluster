@@ -1,12 +1,8 @@
 #! /bin/bash
 
-if [ $(echo "$PATH" | grep "$(dirname $0)" | wc -l) -eq 0 ]; then
-        export PATH="$(dirname $0):${PATH}"
-fi
-
-# Carreguem el script network_api.sh com a una llibreria, per 
+# Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source network_api.sh
+source network_lib.sh
 
 
 ip=$1
