@@ -68,11 +68,8 @@ add_resolvconf() {
 	systemctl enable resolvconf
 	systemctl start resolvconf
 
-	echo "nameserver ${dns_ip}" > /etc/resolvconf/resolv.conf.d/tail
-
-	# Afegim els externals dns a tail per a que els afegeixi a /etc/resolv.conf
-	echo "nameserver ${externaldns1}" >> /etc/resolvconf/resolv.conf.d/tail
-	echo "nameserver ${externaldns2}" >> /etc/resolvconf/resolv.conf.d/tail
+	# No fa falta afegir la loopback adress perque per si sol l'afegeix al 
+	# fitxer resolv.conf, els servidors externs estan afegits a /etc/dnsmasq.conf
 
 	# Actualitzem els DNS
 	resolvconf --enable-updates
@@ -87,7 +84,7 @@ add_dnsmasq() {
 	fi
 
 	ip="$1"
-	lan_interface="$4"
+	lan_interface="$2"
 
 	# Instal.lem dnsmasq i el deshabilitem
 	apt-get install dnsmasq -y 2> /dev/null
@@ -113,7 +110,11 @@ add_dnsmasq() {
 	no-hosts
 	hostsdir=/etc/hosts.d
 	strict-order
+	cache-size=1000
+	domain=odroid.lan
 	
+	server=${externaldns1}
+	server=${externaldns2}
 	interface=${lan_interface}
 	dhcp-range=${ip},172.16.0.254,12h
 	# Establecer la puerta de enlace predeterminada.
@@ -277,11 +278,11 @@ add_munge
 
 clean_tmp_hosts
 
-add_resolvconf "127.0.0.1"
+add_resolvconf
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AQUEST SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
-add_dnsmasq "${net_array[0]}"
+add_dnsmasq "${net_array[0]}" "${net_array[3]}"
 
 # Actualitzem per no tindre problemes amb modificacións a les instalacions anteriors
 #	amb actualitzacions al kernel

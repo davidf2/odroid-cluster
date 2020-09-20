@@ -80,10 +80,14 @@ sysctl -p
 
 # Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
 iptables -t nat -A POSTROUTING -o $net_interface -j MASQUERADE
+sleep 1
 
 # Guardem els canvis a iptables de forma permanentment
-bash -c "iptables-save > /etc/iptables/rules.v4"
-bash -c "iptables-save > /etc/iptables/rules.v6"
+iptables-save > /etc/iptables/rules.v4
+iptables-save > /etc/iptables/rules.v6
+
+systemctl restart netfilter-persistent
+systemctl enable netfilter-persistent
 
 # Retornem els resultats
 echo "$ip;$mask;$net_interface;$lan_interface"
