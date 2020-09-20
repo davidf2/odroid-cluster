@@ -57,25 +57,6 @@ add_ssh() {
 	#systemctl restart fail2ban
 }
 
-add_resolvconf() {
-
-	dns_ip="$1"
-
-	# Instal.lem el dimoni resolvconf
-	apt-get install resolvconf -y
-
-	# Habilitem i reiniciem el dimoni de resolvconf
-	systemctl enable resolvconf
-	systemctl start resolvconf
-
-	# No fa falta afegir la loopback adress perque per si sol l'afegeix al 
-	# fitxer resolv.conf, els servidors externs estan afegits a /etc/dnsmasq.conf
-
-	# Actualitzem els DNS
-	resolvconf --enable-updates
-	resolvconf -u
-}
-
 add_dnsmasq() {
 
 	if [ $# -lt 1 ]; then
@@ -104,17 +85,19 @@ add_dnsmasq() {
 
 	# Carreguem la configuració per a dnsmasq
 	echo "
-	listen-address=${ip}
+	listen-address=::1,127.0.0.1,${ip}
 	domain-needed
 	bogus-priv
 	no-hosts
 	hostsdir=/etc/hosts.d
 	strict-order
+	no-resolv
 	cache-size=1000
-	domain=odroid.lan
-	
 	server=${externaldns1}
 	server=${externaldns2}
+	domain=lan
+	local=/lan/
+	
 	interface=${lan_interface}
 	dhcp-range=${ip},172.16.0.254,12h
 	# Establecer la puerta de enlace predeterminada.
@@ -124,11 +107,6 @@ add_dnsmasq() {
 
 	dhcp-script=${scripts_path}/dhcp_script.sh
 	" > /etc/dnsmasq.conf
-
-	#rm /etc/resolv.conf
-	
-	# Afegim la propia maquina com a servidor DNS
-	#echo "nameserver 127.0.0.1" > /etc/resolv.conf
 
 	# Reiniciem i habilitem el dimoni de dnsmasq
 	systemctl enable dnsmasq
@@ -277,8 +255,6 @@ add_nfs "${net_array[0]}" "${net_array[1]}"
 add_munge
 
 clean_tmp_hosts
-
-add_resolvconf
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AQUEST SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
