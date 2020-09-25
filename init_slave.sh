@@ -19,41 +19,18 @@ add_resolvconf() {
 	resolvconf -u
 }
 
-get_ip_of_nic() {
-	
-	if [ $# -lt 1 ]; then
-		echo "Error, you have to enter 1 parameter corresponding to the network interface."
-		exit 1
-	fi
-
-	interface="$1"
-
-	nic_info=$(ip -4 a show $interface)
-	nic_ip=""
-
-	OLDIFS=$IFS
-	IFS=$' '
-	for ip in $(echo $(hostname -I)); do
-		if [ $(echo "$nic_info" | grep "$ip" | wc -l) -gt 0 ]; then
-			nic_ip="$ip"
-		fi
-	done
-	IFS=$OLDIFS
-
-	if [ -z $nic_ip ]; then
-		echo "Error: The ip assigned to the interface ${interface} was not found"
-		exit 1
-	fi
-
-	echo "$nic_ip"
-}
-
-if [ $# -ne 1 ]; then
-	echo "Error, you must enter one parameter, corresponding to the IP or host of the master"
+if [ $# -ne 2 ]; then
+	echo "Error, you must enter 2 parameters, the first corresponding to the IP or hostname of the master,
+and the second an integer value between 1 and 0 to indicate if the slave updates or not."
+	exit 1
+fi
+if [ "$2" -eq 1 ] || [ "$2" -eq 0 ]; then
+	echo "The second parameter must be an integer value between 1 and 0"
 	exit 1
 fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
+upgrade="$2"
 
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
@@ -72,15 +49,24 @@ echo "nameserver ${master_ip}" > /etc/resolv.conf
 # Instal.lem el dimoni resolvconf
 add_resolvconf "$master_ip"
 
+# Afegim aquest petit sctipt per a que actualitci el hostname amb el dhcp
+echo "#!/bin/bash
+
+hostnamectl set-hostname --static \$new_host_name" > /etc/dhcp/dhclient-exit-hooks.d/hostname
+chmod a+r /etc/dhcp/dhclient-exit-hooks.d/hostname
+dhclient -v
+
 # Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
-ntpdate -u hora.roa.es
+apt install chrony -y
+systemctl enable --now chronyd
 
 # Solucionem error de claus amb l'update
 apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 
 # Actualitzem
 apt-get update -y
+
 
 # Desactivem autentificació mitjançant usuari root
 #sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -94,30 +80,31 @@ apt autoclean -y
 # Instal.lem el client NFS
 apt-get install nfs-common -y
 
+
+# Afegim NFS /home a fstab i el muntem
+echo "${master_ip}:/home /home nfs rw,auto,_netdev 0 0" >> /etc/fstab 
+mount -a || echo "Error: Check the /etc/fstab file, probably the shared directory could
+not be mounted using NFS (Network File System), do not restart
+$(hostname) before solving this problem."
+
 # Instal.lem munge
 apt-get install munge -y
 systemctl enable --now munge
 
-
-cp -p ~/Documents/munge.key /etc/munge && rm ~/Documents/munge.key
-chown munge:munge /etc/munge/munge.key
+# Copiem la clau guardada a /home i reiniciem munge
+dd if=/home/munge.key of=/etc/munge/munge.key 
 systemctl restart munge
 
-host_name=$(hostnamectl | grep Transient | awk '{print $3}')
-if [ -z "$host_name" ]; then
-	host_name=$(hostnamectl | grep Static | awk '{print $3}')
+
+if [ $upgrade -eq 1 ]; then
+	echo "I am $(hostname) I have already installed and configured everything. Starting upgrade." >> ~/odroid
+
+	nohup apt-get upgrade -y 2>&1 &
+
+	echo "I am $(hostname) I have already finished the upgrade." >> ~/odroid
+else
+	echo "I am $(hostname) I have already installed and configured everything." >> ~/odroid
 fi
-
-echo "${master_ip}:/home /home nfs rw,auto 0 0" >> /etc/fstab 
-mount -a || echo "Error: Check the /etc/fstab file, probably the shared directory could
-not be mounted using NFS (Network File System), do not restart
-${host_name} before solving this problem."
-
-echo "Soy $(get_ip_of_nic $nic) solo me queda hacer upgrade" >> ~/odroid
-
-nohup apt-get upgrade -y 2>&1 &
-
-echo "Soy $(get_ip_of_nic $nic) ya he finalizado la inicialización" >> ~/odroid
 
 # Esborrem el propi script
 rm -- "$0"

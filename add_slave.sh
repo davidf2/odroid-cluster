@@ -1,6 +1,7 @@
 #!/bin/bash
 
 scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
+upgrade_slave="$(cat /etc/urvcluster.conf | grep "UPGRADE" | cut -d= -f2)"
 
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
@@ -31,10 +32,6 @@ if [ $# -lt 2 ]; then
 	exit 1
 fi
 
-# Si no existeixen generem el parell de claus
-if [ ! -f "$KEY_FILE" ]; then
-	su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE\" -N \"$passphrase\""
-fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
 su $master_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
@@ -45,15 +42,11 @@ su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@
 # Copiem el script de inicialització al slave
 su $master_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${name}@${host}:Documents"
 
-# Copiem la clau de munge
-sshpass -p ${default_password} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p -r /etc/munge/munge.key ${name}@${host}:Documents/munge.key
-
-
 # Agafem la IP de la xarxa interna
 interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip \" >> /tmp/init_slave_${host}.out 2>&1"
+su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave \" >> /tmp/init_slave_${host}.out 2>&1"
 
 
