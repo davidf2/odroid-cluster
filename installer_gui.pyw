@@ -14,6 +14,11 @@ MAIN_COLOR='#90292A'
 BACKGROUND_COLOR='#fafafa'
 FONT="Optima"
 
+FIELD_PADDING_X=100
+FIELD_PADDING_Y=30
+FIELD_PADDING=100
+FONT_SICE=15
+
 def centerwindow(window):
 	
 	# Agafem l'amplada i alçada de
@@ -88,6 +93,26 @@ def add_menu(window):
 	window.notebook.add(window.f1, text="Install")
 	window.notebook.add(window.f2, text="Advanced")
 	window.notebook.add(window.f3, text="Slurm")
+	
+def add_formtext(frame_parent, label_text, default_text, input_width):
+	frame=Frame(frame_parent, background=BACKGROUND_COLOR)
+	frame_left=Frame(frame, background=BACKGROUND_COLOR)
+	frame_right=Frame(frame, background=BACKGROUND_COLOR)
+	label = Label(frame_left, text = label_text,background=BACKGROUND_COLOR,font=(0,FONT_SICE))
+	text_input = Text(frame_right, height=1, width=input_width,font=(0,FONT_SICE))
+	text_input.insert(INSERT, default_text)
+	label.pack(side=RIGHT)
+	text_input.pack(side=LEFT)
+	frame.pack(side=TOP,fill=X, padx=FIELD_PADDING_X, pady=FIELD_PADDING_Y)
+	frame_left.pack(side=LEFT, fill=X)
+	frame_right.pack(side=LEFT,padx=FIELD_PADDING, fill=X)
+	return(text_input)
+	
+
+def add_content_install(window):
+	text_name=add_formtext(window.f1, "Name:", "odroid", 20);
+	text_name=add_formtext(window.f1, "Default password:", "odroid", 20);
+	
 
 def installer_screen(window):
 	#Destruim la finestra
@@ -125,16 +150,9 @@ def installer_screen(window):
 	window.winfo_toplevel().title("Odroid Cluster")
 	add_menu(window)
 	window.notebook.pack(expand=1, fill=BOTH)
+	add_content_install(window)
 	
-	f11_left=Frame(window.f1, background=BACKGROUND_COLOR)
-	f11_right=Frame(window.f1, background=BACKGROUND_COLOR)
-	var = StringVar()
-	l1 = Label(f11_left, textvariable = var,background=BACKGROUND_COLOR,font=(0,15))
-	var.set("User:")
-	t1 = Text(f11, height=1, width=20)
-	l1.pack(side=LEFT, padx=20, pady=40)
-	t1.pack(side=LEFT)
-	f11.pack(side=TOP,fill=X)
+
 # Creem la finestra principal
 root = Tk()
 # Carrega la finestra de benvinguda
