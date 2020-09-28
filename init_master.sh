@@ -19,7 +19,7 @@ master_home=$(eval echo "~$master_name")
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
-name=$(cat /etc/urvcluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
+name=$(cat /etc/urvcluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
 
 add_ssh() {
 	# Instal.lem openssh server
@@ -153,7 +153,7 @@ install_nic_driver() {
 
 add_vnc() {
 	# Instal.lem l'entorn d'escriptori Xfce
-	apt-get install xfce4 -y
+	apt-get install xfce4 xfce4-goodies -y
 
 	# Instal.lem un servidor VNC
 	apt-get install tightvncserver -y
@@ -161,8 +161,7 @@ add_vnc() {
 	# Carreguem la configuració de VNC pel nou entorn d'escriptori
 	echo "
 	#!/bin/bash
-	xrdb $HOME/.Xresources
-	startxfce4 &
+	exec /usr/bin/startxfce4 &
 	" > $(eval echo "~$name")/.vnc/xstartup
 }
 
