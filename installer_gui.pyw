@@ -2,13 +2,16 @@
 
 from tkinter import ttk
 from tkinter import *  
-from PIL import ImageTk,Image,ImageOps
+from PIL import ImageTk,Image
 import time
 from fontTools.ttLib import TTFont
 from pathlib import Path
+from tkinter import messagebox
 
 font = TTFont('optima-roman.ttf')
 font.save(str(Path.home())+"/.local/share/fonts/optima-roman.ttf")
+
+OPTIONS_FILE="urvcluster.conf"
 
 MAIN_COLOR='#90292A'
 BACKGROUND_COLOR='#fafafa'
@@ -21,7 +24,70 @@ FRAME_PADDING_X=100
 FRAME_PADDING_Y=80
 FONT_SICE=15
 
-def centerwindow(window):
+options=("DEFAULT_USER", "DEFAULT_PASSWORD", "HOSTS_NAME", "MAX_NODES",
+	"EXTERNALDNS1", "EXTERNALDNS2", "SCRIPTS_DIR", "UPGRADE", "SLURM_DIR",
+	"IP_CLASS", "SECURITY")
+
+
+def read_option(option):
+	f = open(OPTIONS_FILE, "r")
+	found=None
+	
+	for line in f:
+		splited=line.split("=")
+		if(splited[0]==option):
+			found=splited[1]
+	f.close()
+	
+	return(found.rstrip())
+
+def write_option(option, value):
+	f = open(OPTIONS_FILE, "r")
+	found=False
+	
+	lines = f.readlines()
+	num_lines=len(lines)
+	
+	i=0
+	while(found==False and i<num_lines):
+		if(lines[i].split("=")[0]==option):
+			found=True
+			lines[i]=option+"="+value
+		i+=1
+	f.close()
+	
+	f = open(OPTIONS_FILE, "w")
+	
+	for line in lines:
+		f.write(line.rstrip()+"\n")
+	f.close()
+	
+	return(found)
+
+def iplist_to_ipstring(list1):
+	ip= ""
+		
+	for i in list1:
+		ip+=i.get("1.0",END).rstrip()
+		ip+="."
+	
+	return(ip[:-1])
+
+def check_ip(list1, title_error):
+	
+	for i in list1:
+		i=i.get("1.0",END)
+		try:
+			int(i)
+		except ValueError:
+			messagebox.showerror(message='The IP can only contain digits', title=title_error)
+			return False
+		if(int(i) < 0 or int(i) > 255):
+			messagebox.showerror(message='The digits of the IP can only be between 0 and 255', title=title_error)
+			return False
+	return True
+	
+def center_window(window):
 	
 	# Agafem l'amplada i alçada de
 	window_width = window.winfo_reqwidth()
@@ -79,7 +145,7 @@ def load_screen(window):
 	root.withdraw()
 	root.update_idletasks()  # Update "requested size" from geometry manager
 
-	centerwindow(window)
+	center_window(window)
 
 	# This seems to draw the window frame immediately, so only call deiconify()
 	# after setting correct window position
@@ -157,53 +223,63 @@ def check_if_grid(element):
 		return(False)
 
 def add_content_install(window):
-	
 	frame1 = Frame(window.f1, background=BACKGROUND_COLOR)
-	frame1.row=0
 	frame2 = Frame(window.f1, background=BACKGROUND_COLOR)
-	frame1.var1 = IntVar()
-	frame1.var1.set(0)
-	frame1.var2 = IntVar()
-	frame1.var2.set(0)
+	window.f1.radio1 = IntVar()
+	window.f1.check1 = IntVar()
 	text_password = Text()
 	label_password = Label()
+	frame1.row=0
+	window.f1.radio1.set(read_option(options[10]))
+	window.f1.check1.set(read_option(options[7]))
 	
 	
 	add_label(frame1, "Name of OS user:")
-	text_name = add_formtext(frame1, "odroid", 20)
+	window.f1.text_name = add_formtext(frame1, read_option(options[0]), 20)
 	
 	add_label(frame1, "Hostname assigned to nodes:")
-	text_hostname = add_formtext(frame1, "odroid", 20)
+	window.f1.text_hostname = add_formtext(frame1, read_option(options[2]), 20)
 	
-	add_label(frame1, "Security level:")
-	add_radiobutton(frame1, "0 - Use default password", frame1.var1, 0, lambda: grid_objects({text_password, label_password}))
-	add_radiobutton(frame1, "1 - Type password", frame1.var1, 1, lambda: ungrid_objects({text_password, label_password}))
+	label=add_label(frame1, "Security level:")
+	label.grid(pady=0) 
+	add_radiobutton(frame1, "0 - Use default password", window.f1.radio1, 0, lambda: grid_objects({text_password, label_password}))
+	add_radiobutton(frame1, "1 - Type password", window.f1.radio1, 1, lambda: ungrid_objects({text_password, label_password}))
 	
 	label_password=add_label(frame1, "Default OS user password:")
-	text_password = add_formtext(frame1, "odroid", 20)
+	text_password = add_formtext(frame1, read_option(options[1]), 20)
+	window.f1.text_password2 = text_password
 	add_label(frame1, "Maximum number of nodes:")
-	text_num_nodes=add_formtext(frame1, "255", 20)
-	add_checkbutton(frame1, "Upgrade nodes",frame1.var2)
+	window.f1.text_num_nodes=add_formtext(frame1, read_option(options[3]), 20)
+	add_checkbutton(frame1, "Upgrade nodes and master",window.f1.check1)
 	
-	
-	button=ttk.Button(frame2,text='INSTALL NOW', command=0)
-	
-	frame2.pack()
+	button=ttk.Button(frame2,text='INSTALL NOW',  command = lambda: start_installation(window))
+
 	button.pack()
 	frame2.pack(side=BOTTOM)
 	frame1.pack(side=TOP, fill=X)
 	
 def add_content_advanced(window):
 	window.f2.row=0
-	add_label(window.f2, "Upstream DNS server 1:")
-	dns1=add_ip(window.f2, ["8","8","8","8"])
-	add_label(window.f2, "Upstream DNS server 2:")
-	dns2=add_ip(window.f2, ["8","8","4","4"])
-	add_label(window.f2, "Scripts directory")
-	scripts_dir=add_formtext(window.f2,"/opt/scripts",20)
-	add_label(window.f2, "Slurm directory")
-	scripts_dir=add_formtext(window.f2,"/usr/local/slurm",20)
+	window.f2.radio1 = StringVar()
+	window.f2.radio1.set(read_option(options[9]))
 	
+	add_label(window.f2, "Upstream DNS server 1:")
+	splited_dns1=read_option(options[4]).split(".")
+	window.f2.dns1=add_ip(window.f2, [splited_dns1[0],splited_dns1[1],splited_dns1[2],splited_dns1[3]])
+	add_label(window.f2, "Upstream DNS server 2:")
+	splited_dns2=read_option(options[5]).split(".")
+	window.f2.dns2=add_ip(window.f2, [splited_dns2[0],splited_dns2[1],splited_dns2[2],splited_dns2[3]])
+	add_label(window.f2, "Scripts directory")
+	window.f2.scripts_dir=add_formtext(window.f2,read_option(options[6]),20)
+	add_label(window.f2, "Slurm directory")
+	window.f2.slurm_dir=add_formtext(window.f2, read_option(options[8]),20)
+	
+	label=add_label(window.f2, "Private IP:")
+	# Treiem el pady que afegeix l'etiqueta
+	label.grid(pady=0) 
+	add_radiobutton(window.f2, "Class A", window.f2.radio1, 'A', command=None)
+	add_radiobutton(window.f2, "Class B", window.f2.radio1, 'B', command=None)
+	add_radiobutton(window.f2, "Class C", window.f2.radio1, 'C', command=None)
 	
 def installer_screen(window):
 	#Destruim la finestra
@@ -227,7 +303,7 @@ def installer_screen(window):
 
 														}
 													},
-									"TButton": {"configure": {		"padding": [50, 15],
+									"TButton": {"configure": {		"padding": [30, 10],
 																	"background": MAIN_COLOR,
 																	"foreground": "white",
 																	"font" : (FONT, FONT_SICE)
@@ -271,8 +347,43 @@ def installer_screen(window):
 	add_content_install(window)
 	add_content_advanced(window)
 
+def write_options(window):
+	
+	correct=True
+	
+	try:
+		int(window.f1.text_num_nodes.get("1.0",END))
+	except ValueError:
+		messagebox.showerror(message='The number of nodes must be a digit.', title="Maximum number of nodes")
+		correct=False
+	if(int(window.f1.text_num_nodes.get("1.0",END)) < 1):
+		messagebox.showerror(message='At least there must be one node.', title="Maximum number of nodes")
+		correct=False
+	
+	if(correct):
+		correct = check_ip(window.f2.dns1, "DNS1")
+	if(correct):
+		correct = check_ip(window.f2.dns2, "DNS2")
+	
+	if(correct):
+		write_option(options[0],window.f1.text_name.get("1.0",END))
+		write_option(options[1],window.f1.text_password2.get("1.0",END))
+		write_option(options[2],window.f1.text_hostname.get("1.0",END))
+		write_option(options[3],window.f1.text_num_nodes.get("1.0",END))
+		write_option(options[4],iplist_to_ipstring(window.f2.dns1))
+		write_option(options[5],iplist_to_ipstring(window.f2.dns2))
+		write_option(options[6],window.f2.scripts_dir.get("1.0",END))
+		write_option(options[7],str(window.f1.check1.get()))
+		write_option(options[8],window.f2.slurm_dir.get("1.0",END))
+		write_option(options[9],str(window.f2.radio1.get()))
+		write_option(options[10],str(window.f1.radio1.get()))
+	
+def start_installation(window):
+	write_options(window)
+
 # Creem la finestra principal
 root = Tk()
+
 # Carrega la finestra de benvinguda
 load_screen(root)
 # Al cap de 1,5 segons carreguem el l'instalador
