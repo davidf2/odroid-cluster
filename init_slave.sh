@@ -45,9 +45,16 @@ while [[ $(ping 8.8.8.8 -I "$nic" -w2 2> /dev/null | grep "received" | cut -d " 
 done
 
 # Fixem com a DNS el master
+rm /etc/resolv.conf
 echo "nameserver ${master_ip}" > /etc/resolv.conf
-# Instal.lem el dimoni resolvconf
-add_resolvconf "$master_ip"
+chattr +i /etc/resolv.conf
+
+# Configurem les interficies de xarxa
+echo "auto lo
+iface lo inet loopback
+
+auto ${nic}
+iface ${nic} inet dhcp" > /etc/network/interfaces
 
 # Afegim aquest petit sctipt per a que actualitci el hostname amb el dhcp
 echo "#!/bin/bash

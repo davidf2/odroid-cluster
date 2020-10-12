@@ -21,11 +21,13 @@ tar --bzip -x -f openmpi*tar.bz2 && rm openmpi-*.tar.bz2
 cd openmpi-"$VERSION"
 
 mkdir /usr/local/openmpi
-./configure --prefix=/usr/local/openmpi --enable-mpirun-prefix-by-default
+./configure --prefix=/usr/local/openmpi --enable-mpirun-prefix-by-default --with-ucx=no --with-slurm --with-pmi=/usr/local/slurm/include/slurm/pmi.h
 
-make -j25 all
+make -j4 all
+make install
 
 ln -s /usr/local/openmpi/bin/* /usr/bin/
-
-echo "/usr/local/src/openmpi-${VERSION} $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,no_root_squash,no_subtree_check)" >> /etc/exports
+if [ $(cat /etc/exports | grep "/usr/local/src/openmpi-${VERSION}" | wc -l) -eq 0 ]; then
+	echo "/usr/local/src/openmpi-${VERSION} $(calculate_network_ip $ip $mask)$(mask_to_cidr $mask)(rw,no_root_squash,no_subtree_check)" >> /etc/exports
+fi
 exportfs -a
