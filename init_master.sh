@@ -214,6 +214,14 @@ clean_tmp_hosts() {
 	
 }
 
+add_monitoring() {
+	apt install git -y
+	git clone https://github.com/JoanJaraBosch/TFG.git $(eval echo ~$name)/Downloads/monitoring
+	cd $(eval echo ~$name)/Downloads/monitoring
+	./start-monitoring.sh
+	cd -
+}
+
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d "$scripts_path" ]; then
 	mkdir "$scripts_path"
@@ -281,6 +289,13 @@ clean_tmp_hosts
 
 # Modifiquem el hostname a master
 hostnamectl set-hostname master
+
+./install_slurm.sh "${net_array[0]}" "${net_array[1]}"
+
+apt install mpich -y
+
+# Instal.lem el software de monitoreig fet per Joan Jara Bosch
+add_monitoring
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AIXÓ SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE

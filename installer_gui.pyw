@@ -9,6 +9,7 @@ from fontTools.ttLib import TTFont
 from pathlib import Path
 from tkinter import messagebox
 from cypherAES import CypherAES
+import subprocess
 
 font = TTFont('optima-roman.ttf')
 font.save(str(Path.home())+"/.local/share/fonts/optima-roman.ttf")
@@ -25,7 +26,8 @@ FIELD_PADDING_Y=30
 FRAME_PADDING_X=100
 FRAME_PADDING_Y=80
 FONT_SICE=15
-
+start=False
+p = None
 options=("DEFAULT_USER", "DEFAULT_PASSWORD", "HOSTS_NAME", "MAX_NODES",
 	"EXTERNALDNS1", "EXTERNALDNS2", "SCRIPTS_DIR", "UPGRADE", "SLURM_DIR",
 	"IP_CLASS", "SECURITY")
@@ -86,6 +88,8 @@ def start(window, password):
 	res=check_password(password)
 	if(res == 0):
 		window.destroy()
+		start=True
+		p=subprocess.run("x-terminal-emulator -e 'echo \""+password+"\" | sudo -Sk "+str(Path().absolute())+"/init_master.sh'", shell=True)
 	else:
 		password=""
 		window.entry.delete(0,END)
@@ -334,8 +338,8 @@ def add_content_install(window):
 	label_password=add_label(frame1, "Default OS user password:")
 	text_password = add_formtext(frame1, read_option(options[1]), 20)
 	window.f1.text_password2 = text_password
-	add_label(frame1, "Maximum number of nodes:")
-	window.f1.text_num_nodes=add_formtext(frame1, read_option(options[3]), 20)
+	#add_label(frame1, "Maximum number of nodes:")
+	#window.f1.text_num_nodes=add_formtext(frame1, read_option(options[3]), 20)
 	add_checkbutton(frame1, "Upgrade nodes and master",window.f1.check1)
 	
 	button=ttk.Button(frame2,text='INSTALL NOW',  command = lambda: start_installation(window))
@@ -343,6 +347,11 @@ def add_content_install(window):
 	button.pack()
 	frame2.pack(side=BOTTOM)
 	frame1.pack(side=TOP, fill=X)
+
+def add_ip_a(frame):
+	field2=StringVar()
+	field3=StringVar()
+	field4=StringVar()
 	
 def add_content_advanced(window):
 	window.f2.row=0
@@ -364,6 +373,7 @@ def add_content_advanced(window):
 	# Treiem el pady que afegeix l'etiqueta
 	label.grid(pady=0) 
 	add_radiobutton(window.f2, "Class A", window.f2.radio1, 'A', command=None)
+	add_ip_a(window.f2)
 	add_radiobutton(window.f2, "Class B", window.f2.radio1, 'B', command=None)
 	add_radiobutton(window.f2, "Class C", window.f2.radio1, 'C', command=None)
 	
@@ -396,14 +406,14 @@ def write_options(window):
 	
 	correct=True
 	
-	try:
-		int(window.f1.text_num_nodes.get("1.0",END))
-	except ValueError:
-		messagebox.showerror(message='The number of nodes must be a digit.', title="Maximum number of nodes")
-		correct=False
-	if(int(window.f1.text_num_nodes.get("1.0",END)) < 1):
-		messagebox.showerror(message='At least there must be one node.', title="Maximum number of nodes")
-		correct=False
+	#try:
+	#	int(window.f1.text_num_nodes.get("1.0",END))
+	#except ValueError:
+	#	messagebox.showerror(message='The number of nodes must be a digit.', title="Maximum number of nodes")
+	#	correct=False
+	#if(int(window.f1.text_num_nodes.get("1.0",END)) < 1):
+	#	messagebox.showerror(message='At least there must be one node.', title="Maximum number of nodes")
+	#	correct=False
 	
 	if(correct):
 		correct = check_ip(window.f2.dns1, "DNS1")
@@ -414,7 +424,7 @@ def write_options(window):
 		write_option(options[0],window.f1.text_name.get("1.0",END))
 		write_option(options[1],window.f1.text_password2.get("1.0",END))
 		write_option(options[2],window.f1.text_hostname.get("1.0",END))
-		write_option(options[3],window.f1.text_num_nodes.get("1.0",END))
+		#write_option(options[3],window.f1.text_num_nodes.get("1.0",END))
 		write_option(options[4],iplist_to_ipstring(window.f2.dns1))
 		write_option(options[5],iplist_to_ipstring(window.f2.dns2))
 		write_option(options[6],window.f2.scripts_dir.get("1.0",END))
@@ -437,6 +447,10 @@ load_screen(root)
 # Al cap de 1,5 segons carreguem el l'instalador
 root.after(1500, lambda: installer_screen(root)) 
 
+
+#if(start == True and p.poll() == None):
+#	start = False
+	
 root.mainloop() 
 
 

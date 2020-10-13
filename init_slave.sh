@@ -19,6 +19,45 @@ add_resolvconf() {
 	resolvconf -u
 }
 
+add_slurm() {
+	SLURM_ETC=/etc/slurm-llnl
+
+	master_ip=$1
+
+	if [ $(munge -n | unmunge | grep ENCODE_HOST | grep \(0.0.0.0\) | wc -l) -eq 1 ]; then
+		apt remove --purge munge -y
+		apt install munge -y
+		dd if=/home/munge.key of=/etc/munge/munge.key
+		systemctl restart munge
+		if [ $(munge -n | unmunge | grep ENCODE_HOST | grep \(0.0.0.0\) | wc -l) -eq 1 ]; then
+			echo "Could not fix error in munge:
+		ENCODE_HOST: ??? (0.0.0.0)
+
+	You can check if the problem persists with the command:
+		munge -n | unmunge" 2>&1
+			exit 1
+		fi
+	fi
+
+	# Instal.lem dependencies
+	apt-get  install libfreeipmi-dev libhwloc-dev freeipmi libmunge-dev libz-dev -y
+
+	# Instal.lem slurm-wlm
+	apt install slurm-wlm -y
+
+	if [ $(cat /etc/fstab | grep "${SLURM_ETC}" | wc -l) -eq 0 ]; then
+		echo "${master_ip}:${SLURM_ETC} ${SLURM_ETC} nfs rw,auto,_netdev 0 0" >> /etc/fstab
+	fi
+
+	mount ${SLURM_ETC}
+
+	mkdir /var/spool/slurmd
+	chown slurm: /var/spool/slurmd
+
+	systemctl enable slurmd
+	systemctl start slurmd
+}
+
 if [ $# -ne 2 ]; then
 	echo "Error, you must enter 2 parameters, the first corresponding to the IP or hostname of the master,
 and the second an integer value between 1 and 0 to indicate if the slave updates or not."
@@ -102,6 +141,9 @@ systemctl enable --now munge
 dd if=/home/munge.key of=/etc/munge/munge.key 
 systemctl restart munge
 
+add_slurm "${master_ip}"
+
+apt install mpich -y
 
 if [ $upgrade -eq 1 ]; then
 	echo "I am $(hostname) I have already installed and configured everything. Starting upgrade." >> ~/odroid
