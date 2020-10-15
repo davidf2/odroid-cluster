@@ -149,14 +149,10 @@ add_slurm "${master_ip}"
 
 apt install mpich -y
 
+echo "I am $(hostname) I have already installed and configured everything." >> ~/.slave_responses
+
 if [ $upgrade -eq 1 ]; then
-	echo "I am $(hostname) I have already installed and configured everything. Starting upgrade." >> ~/odroid
-
 	nohup apt-get upgrade -y 2>&1 &
-
-	echo "I am $(hostname) I have already finished the upgrade." >> ~/odroid
-else
-	echo "I am $(hostname) I have already installed and configured everything." >> ~/odroid
 fi
 
 # Esborrem el propi script
