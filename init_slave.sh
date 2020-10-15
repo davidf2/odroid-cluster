@@ -147,7 +147,7 @@ systemctl restart munge
 
 add_slurm "${master_ip}"
 
-apt install mpich -y
+apt-get install mpich -y
 
 echo "I am $(hostname) I have already installed and configured everything." >> ~/.slave_responses
 

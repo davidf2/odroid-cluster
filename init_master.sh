@@ -211,7 +211,7 @@ clean_tmp_hosts() {
 }
 
 add_monitoring() {
-	apt install git -y
+	apt-get install git -y
 	cd $(eval echo ~$name)/Downloads
 	git clone https://github.com/JoanJaraBosch/TFG.git
 	cd TFG
@@ -245,7 +245,7 @@ hostnamectl set-hostname master
 
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
-apt install chrony -y
+apt-get install chrony -y
 systemctl enable --now chronyd
 
 # Evitem que el dialeg amb la GUI durant la instal.lació de iptables-persistent 
@@ -287,7 +287,7 @@ clean_tmp_hosts
 
 ./install_slurm.sh "${net_array[0]}" "${net_array[1]}"
 
-apt install mpich -y
+apt-get install mpich -y
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AIXÓ SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
