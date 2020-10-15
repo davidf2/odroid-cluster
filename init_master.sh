@@ -33,9 +33,9 @@ add_ssh() {
 	fi
 
 	#Ens autoafegim a knownhosts, per a quan estigui el servidor NFS /home
-	su $master_name -c "echo \"$(ssh-keyscan -H \"$(hostname)\")\" >> $KNOWN_HOSTS"
+	su $master_name -c "echo \"$(ssh-keyscan -H $(hostname))\" >> $KNOWN_HOSTS"
 	#Ens autoafegim la clau publica, per a quan estigui el servidor NFS /home
-	su $master_name -c "ssh-copy-id \"${master_name}@\"$(hostname)"
+	cat  $KEY_FILE.pub > "$master_home"/.ssh/authorized_keys
 
 	# Si no existeix, fem una copia del fitxer de configuració
 	#	original del servidor ssh

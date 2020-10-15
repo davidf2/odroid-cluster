@@ -87,7 +87,7 @@ def start(window, password):
 	res=check_password(password)
 	if(res == 0):
 		window.destroy()
-		subprocess.call("x-terminal-emulator -e 'echo \""+password+"\" | sudo -Sk "+str(Path().absolute())+"/prova.sh'", shell=True)
+		subprocess.call("x-terminal-emulator -e 'echo \""+password+"\" | sudo -Sk "+str(Path().absolute())+"/init_master.sh'", shell=True)
 	else:
 		password=""
 		window.entry.delete(0,END)

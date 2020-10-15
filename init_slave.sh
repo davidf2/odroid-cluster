@@ -54,6 +54,10 @@ add_slurm() {
 	mkdir /var/spool/slurmd
 	chown slurm: /var/spool/slurmd
 
+	#Afegim el fitxer allowed_devices al directori pertinent
+	mkdir -p /usr/local/slurm/etc/
+	ln -s /etc/slurm-llnl/allowed_devices.conf /usr/local/slurm/etc/allowed_devices.conf
+
 	systemctl enable slurmd
 	systemctl start slurmd
 }

@@ -88,7 +88,7 @@ def center_window(window):
 def start(window, password):
 	res=check_password(password)
 	if(res == 0):
-		window.destroy()
+		print(password)
 	else:
 		password=""
 		window.entry.delete(0,END)
