@@ -26,8 +26,7 @@ FIELD_PADDING_Y=30
 FRAME_PADDING_X=100
 FRAME_PADDING_Y=80
 FONT_SICE=15
-start=False
-p = None
+
 options=("DEFAULT_USER", "DEFAULT_PASSWORD", "HOSTS_NAME", "MAX_NODES",
 	"EXTERNALDNS1", "EXTERNALDNS2", "SCRIPTS_DIR", "UPGRADE", "SLURM_DIR",
 	"IP_CLASS", "SECURITY")
@@ -88,8 +87,7 @@ def start(window, password):
 	res=check_password(password)
 	if(res == 0):
 		window.destroy()
-		start=True
-		p=subprocess.run("x-terminal-emulator -e 'echo \""+password+"\" | sudo -Sk "+str(Path().absolute())+"/init_master.sh'", shell=True)
+		subprocess.call("x-terminal-emulator -e 'echo \""+password+"\" | sudo -Sk "+str(Path().absolute())+"/prova.sh'", shell=True)
 	else:
 		password=""
 		window.entry.delete(0,END)
@@ -445,11 +443,7 @@ root = Tk()
 # Carrega la finestra de benvinguda
 load_screen(root)
 # Al cap de 1,5 segons carreguem el l'instalador
-root.after(1500, lambda: installer_screen(root)) 
-
-
-#if(start == True and p.poll() == None):
-#	start = False
+root.after(1500, lambda: installer_screen(root))
 	
 root.mainloop() 
 

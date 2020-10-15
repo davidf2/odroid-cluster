@@ -19,8 +19,6 @@ master_home=$(eval echo "~$master_name")
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
-name=$(cat /etc/urvcluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
-
 add_ssh() {
 	# Instal.lem openssh server
 	apt-get install openssh-server sshpass -y
@@ -28,6 +26,16 @@ add_ssh() {
 	# Iniciem el servei ssh
 	systemctl start sshd
 	systemctl enable sshd
+
+	# Si no existeixen generem el parell de claus
+	if [ ! -f "$KEY_FILE" ]; then
+		su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE\" -N \"$passphrase\""
+	fi
+
+	#Ens autoafegim a knownhosts, per a quan estigui el servidor NFS /home
+	su $master_name -c "echo \"$(ssh-keyscan -H \"$(hostname)\")\" >> $KNOWN_HOSTS"
+	#Ens autoafegim la clau publica, per a quan estigui el servidor NFS /home
+	su $master_name -c "ssh-copy-id \"${master_name}@\"$(hostname)"
 
 	# Si no existeix, fem una copia del fitxer de configuració
 	#	original del servidor ssh
@@ -58,17 +66,6 @@ add_ssh() {
 
 	# Reiniciem el dimoni de ssh per a que carregui la nova configuració
 	systemctl restart sshd
-
-	# Si no existeixen generem el parell de claus
-	if [ ! -f "$KEY_FILE" ]; then
-		su $master_name -c "ssh-keygen -q -t rsa -f \"$KEY_FILE\" -N \"$passphrase\""
-	fi
-
-
-	#Ens autoafegim a knownhosts, per a quan estigui el servidor NFS /home
-	echo "$(ssh-keyscan -H "${hostname}")" >> $KNOWN_HOSTS
-	#Ens autoafegim la clau publica, per a quan estigui el servidor NFS /home
-	ssh-copy-id "${master_name}@$(hostname)"
 
 	#apt-get install fail2ban -y
 	#cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
@@ -216,10 +213,10 @@ clean_tmp_hosts() {
 
 add_monitoring() {
 	apt install git -y
-	git clone https://github.com/JoanJaraBosch/TFG.git $(eval echo ~$name)/Downloads/monitoring
-	cd $(eval echo ~$name)/Downloads/monitoring
+	cd $(eval echo ~$name)/Downloads
+	git clone https://github.com/JoanJaraBosch/TFG.git
+	cd TFG
 	./start-monitoring.sh
-	cd -
 }
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
@@ -244,6 +241,8 @@ apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 # Actualitzem el master
 apt-get update -y
 
+# Modifiquem el hostname a master
+hostnamectl set-hostname master
 
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone Europe/Madrid
@@ -287,19 +286,16 @@ add_munge
 
 clean_tmp_hosts
 
-# Modifiquem el hostname a master
-hostnamectl set-hostname master
-
 ./install_slurm.sh "${net_array[0]}" "${net_array[1]}"
 
 apt install mpich -y
 
-# Instal.lem el software de monitoreig fet per Joan Jara Bosch
-add_monitoring
-
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AIXÓ SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
 add_dnsmasq "${net_array[0]}" "${net_array[3]}"
+
+# Instal.lem el software de monitoreig fet per Joan Jara Bosch
+add_monitoring
 
 if [ "$upgrade" -eq 1 ]; then
 	apt-get upgrade -y

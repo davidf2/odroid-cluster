@@ -63,7 +63,7 @@ if [ $# -ne 2 ]; then
 and the second an integer value between 1 and 0 to indicate if the slave updates or not."
 	exit 1
 fi
-if [ "$2" -eq 1 ] || [ "$2" -eq 0 ]; then
+if [ "$2" -ne 1 ] && [ "$2" -ne 0 ]; then
 	echo "The second parameter must be an integer value between 1 and 0"
 	exit 1
 fi

@@ -66,18 +66,7 @@ case "$option" in
 	;;
 
 	old)
-		# Si no esta al fitxer de hosts l'afegim
-		if [[ ! $(grep "$mac" $HOSTS_FILE) ]]; then
-			add_odroid $@
-		#else
-			# Si esta al fitxer de hosts pero no te la ip correcta
-			#if [[ $(grep "$mac" $HOSTS_FILE | grep -Eo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}') != $ip ]]; then
-			#	sed -i '/'"$mac"'/d' $HOSTS_FILE
-			#	add_odroid $@
-			#	systemctl restart dnsmasq
-			#fi
-
-		fi
+		add_odroid $@
 	;;
 
 	del)

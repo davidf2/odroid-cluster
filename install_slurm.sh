@@ -94,7 +94,7 @@ SlurmdLogFile=/var/log/slurm-llnl/slurmd.log
 # 
 # COMPUTE NODES 
 NodeName=odroid[1-2] CPUs=4 RealMemory=1727 Sockets=4 CoresPerSocket=1 ThreadsPerCore=1 State=UNKNOWN 
-PartitionName=main Nodes=odroid[1-2] Default=YES MaxTime=30 State=UP" > /usr/local/slurm/etc/slurm.conf
+PartitionName=main Nodes=odroid[1-2] Default=YES MaxTime=30 State=UP" > "$SLURM_ETC"/slurm.conf
 
 echo "CgroupAutomount=yes
 CgroupReleaseAgentDir=\"/usr/local/slurm/etc/cgroup\" 

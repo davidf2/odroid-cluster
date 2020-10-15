@@ -66,7 +66,7 @@ echo "$ip master" >> /etc/hosts.d/lan_hosts
 echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
 
 line=$(cat /etc/hosts | grep 127.0.0.1)
-host=$(echo $(who am i | awk '{print $1}'))
+host=$(hostname)
 sed -i 's/^'"$line"'.*/'"$line"' '"$host"'/g' /etc/hosts
 
 # Reiniciem la interficie de xarxa (xarxa interna)
