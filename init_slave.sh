@@ -83,7 +83,7 @@ if [ -z "$nic" ]; then
 fi
 
 # Bucle de espera, per assegurarnos de que la resolució de noms està funcionant correctament
-while [[ $(ping 8.8.8.8 -I "$nic" -w2 2> /dev/null | grep "received" | cut -d " " -f4) -eq 0 ]]; do
+while [[ $(ping google.com -I "$nic" -w2 2> /dev/null | grep "received" | cut -d " " -f4) -eq 0 ]]; do
 	sleep 2
 done
 

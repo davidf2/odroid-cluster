@@ -132,21 +132,6 @@ add_dnsmasq() {
 	
 }
 
-install_nic_driver() {
-
-	if [ $(lsusb | grep "7720 ASIX Electronics Corp. AX88772" | wc -l) -gt 0 ]; then
-		# Instal.lant driver USB NIC
-		apt-get install wget -y
-		wget https://fichiers.touslesdrivers.com/59884/AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
-		tar -xjvf AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source.tar.bz2
-		make -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
-		make install -C AX88772C_772B_772A_760_772_178_Linux_Driver_v4.23.0_Source
-		modprobe asix
-		ifup --all
-		rm -rf AX88772*
-	fi
-}
-
 add_vnc() {
 	# Instal.lem l'entorn d'escriptori Xfce
 	apt-get install xfce4 xfce4-goodies -y
@@ -214,6 +199,7 @@ add_monitoring() {
 	apt-get install git -y
 	cd $(eval echo ~$name)/Downloads
 	git clone https://github.com/JoanJaraBosch/TFG.git
+	chown -R odroid: TFG/
 	cd TFG
 	./start-monitoring.sh
 }
@@ -229,10 +215,6 @@ cp -p dhcp_script.sh "$scripts_path"/
 cp -p init_slave.sh "$scripts_path"/
 cp -p add_slave.sh "$scripts_path"/
 
-
-
-# Instal.lem el driver de la targeta de xarxa 
-install_nic_driver
 
 # Solucionem error de claus amb l'update
 apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
