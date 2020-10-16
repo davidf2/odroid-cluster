@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Deshabilitem Unattended-Upgrade
+sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
 
 cp -p urvcluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/

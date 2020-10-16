@@ -75,6 +75,9 @@ fi
 master_ip="$1" # $1 ip del master a la lan odroid
 upgrade="$2"
 
+# Deshabilitem Unattended-Upgrade
+sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
+
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))
 
 if [ -z "$nic" ]; then

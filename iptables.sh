@@ -6,6 +6,10 @@ internet=eth1
 # Esborrem les regles anteriors
 iptables -F
 iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
 
 # Afegim les politiques per defecte
 iptables -P INPUT DROP
