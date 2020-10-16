@@ -49,10 +49,17 @@ while getopts ":i:m:n:" opt; do
   esac
 done
 
+line=$(cat /etc/hosts | grep 127.0.0.1)
+host=$(hostname)
+host2=$(echo $(who am i | awk '{print $1}'))
+sed -i 's/^'"$line"'.*/'"$line"' '"$host"' '"$host2"'/g' /etc/hosts
+
 result=$(check_interfaces)
+
 if [[ $? -ne 0 ]]; then 
 	exit 1
 fi
+
 net_interface=$(echo $result | cut -d ";" -f 1)
 lan_interface=$(echo $result | cut -d ";" -f 2)
 
@@ -60,18 +67,25 @@ echo "
 auto $lan_interface
 iface $lan_interface inet static
     address $ip
-    netmask ${mask//:/.}" > /etc/network/interfaces
+    netmask ${mask//:/.}
+auto $net_interface
+iface $net_interface inet dhcp" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
 echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
 
-line=$(cat /etc/hosts | grep 127.0.0.1)
-host=$(hostname)
-sed -i 's/^'"$line"'.*/'"$line"' '"$host"'/g' /etc/hosts
+# Afegim la interficie de xarxa lan al fitxer /run/network/ifstate
+if [ ! $(cat /run/network/ifstate | grep "$lan_interface") ]; then
+	echo "$lan_interface=$lan_interface" >> /run/network/ifstate
+fi
+# Afegim la interficie de xarxa internet al fitxer /run/network/ifstate
+if [ ! $(cat /run/network/ifstate | grep "$net_interface") ]; then
+	echo "$net_interface=$net_interface" >> /run/network/ifstate
+fi
 
 # Reiniciem la interficie de xarxa (xarxa interna)
-ifdown $lan_interface
-ifup $lan_interface
+ifdown --force $lan_interface
+ifup --force $lan_interface
 
 # Habilitem de forma permanent el forwarding, descomentant la linia pertinent
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
