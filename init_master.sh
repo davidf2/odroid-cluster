@@ -273,6 +273,9 @@ clean_tmp_hosts
 
 apt-get install mpich -y
 
+# Assegurem que la xarxa interna estigui en up
+ifup --force "${net_array[3]}"
+
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AIXÓ SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
 add_dnsmasq "${net_array[0]}" "${net_array[3]}"
