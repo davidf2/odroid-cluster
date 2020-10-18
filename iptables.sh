@@ -1,7 +1,7 @@
 #!/bin/bash
 
-cluester_lan=eth0
-internet=eth1
+cluester_lan=$1
+internet=$2
 
 # Esborrem les regles anteriors
 iptables -F

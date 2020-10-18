@@ -72,7 +72,6 @@ auto $net_interface
 iface $net_interface inet dhcp" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
-echo "127.0.0.1 $(cat /etc/hostname)" >> /etc/hosts.d/lan_hosts
 
 # Afegim la interficie de xarxa lan al fitxer /run/network/ifstate
 if [ ! $(cat /run/network/ifstate | grep "$lan_interface") ]; then
