@@ -29,7 +29,7 @@ FONT_SICE=15
 
 options=("DEFAULT_USER", "DEFAULT_PASSWORD", "HOSTS_NAME", "MAX_NODES",
 	"EXTERNALDNS1", "EXTERNALDNS2", "SCRIPTS_DIR", "UPGRADE", "SLURM_DIR",
-	"IP_CLASS", "SECURITY")
+	"IP_CLASS", "MAX_TIME")
 
 theme= {
 		"TNotebook.Tab": {"configure": {"padding": [80, 10],
@@ -313,12 +313,10 @@ def check_if_grid(element):
 def add_content_install(window):
 	frame1 = Frame(window.f1, background=BACKGROUND_COLOR)
 	frame2 = Frame(window.f1, background=BACKGROUND_COLOR)
-	window.f1.radio1 = IntVar()
 	window.f1.check1 = IntVar()
 	text_password = Text()
 	label_password = Label()
 	frame1.row=0
-	window.f1.radio1.set(read_option(options[10]))
 	window.f1.check1.set(read_option(options[7]))
 	
 	
@@ -327,11 +325,6 @@ def add_content_install(window):
 	
 	add_label(frame1, "Hostname assigned to nodes:")
 	window.f1.text_hostname = add_formtext(frame1, read_option(options[2]), 20)
-	
-	label=add_label(frame1, "Security level:")
-	label.grid(pady=0) 
-	add_radiobutton(frame1, "0 - Use default password", window.f1.radio1, 0, lambda: grid_objects({text_password, label_password}))
-	add_radiobutton(frame1, "1 - Type password", window.f1.radio1, 1, lambda: ungrid_objects({text_password, label_password}))
 	
 	label_password=add_label(frame1, "Default OS user password:")
 	text_password = add_formtext(frame1, read_option(options[1]), 20)
@@ -429,7 +422,6 @@ def write_options(window):
 		write_option(options[7],str(window.f1.check1.get()))
 		write_option(options[8],window.f2.slurm_dir.get("1.0",END))
 		write_option(options[9],str(window.f2.radio1.get()))
-		write_option(options[10],str(window.f1.radio1.get()))
 	return correct
 	
 def start_installation(window):

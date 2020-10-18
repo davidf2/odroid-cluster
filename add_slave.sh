@@ -17,10 +17,8 @@ master_name=$(cat /etc/urvcluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
 
-
-KEY_FILE="${master_home}/.ssh/id_rsa"
+KEY_FILE="${master_home}/.ssh/id_rsa.pub"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
-default_password=$(cat /etc/urvcluster.conf | grep "DEFAULT_PASSWORD" | cut -d= -f2)
 
 host="$1" # $1 la ip del slave
 name="$2" # $2 nom del slave
