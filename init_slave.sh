@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SLURM_ETC=/etc/slurm-llnl
+
 add_resolvconf() {
 
 	dns_ip="$1"
@@ -20,8 +22,6 @@ add_resolvconf() {
 }
 
 add_slurm() {
-	SLURM_ETC=/etc/slurm-llnl
-
 	master_ip=$1
 
 	# Instal.lem slurm-wlm
@@ -36,13 +36,34 @@ add_slurm() {
 	mkdir /var/spool/slurmd
 	chown slurm: /var/spool/slurmd
 
-	systemctl enable slurmd
-	systemctl start slurmd
+	systemctl enable --now slurmd
 }
 
-if [ $# -ne 2 ]; then
-	echo "Error, you must enter 2 parameters, the first corresponding to the IP or hostname of the master,
-and the second an integer value between 1 and 0 to indicate if the slave updates or not."
+add_slurm_watcher() {
+	echo "[Unit]
+Description=Restart slurmd if slurm.conf is modified.
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=$(which systemctl) restart slurmd.service
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/slurm_watcher.service
+	echo "[Path]
+PathModified=${SLURM_ETC}/slurm.conf
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/slurm_watcher.path
+
+	systemctl enable --now slurm_watcher.{path,service}
+}
+
+if [ $# -ne 3 ]; then
+	echo "Error, you must enter 3 parameters, the first corresponding to the IP or host name 
+of the master, the second an integer value between 1 and 0 to indicate whether the slave is 
+updated or not and the third an integer value corresponding to the waiting time in minutes
+between the upgrade of one node and the next."
 	exit 1
 fi
 if [ "$2" -ne 1 ] && [ "$2" -ne 0 ]; then
@@ -52,6 +73,7 @@ fi
 
 master_ip="$1" # $1 ip del master a la lan odroid
 upgrade="$2"
+sleep_time="$3"
 
 # Deshabilitem Unattended-Upgrade
 sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
@@ -98,6 +120,8 @@ apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 # Actualitzem
 apt-get update -y
 
+# Instal.lem sysstat per a al software de monitorització de Joan Jara
+apt-get install sysstat
 
 # Desactivem autentificació mitjançant usuari root
 #sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -133,7 +157,7 @@ apt-get install mpich -y
 echo "I am $(hostname) I have already installed and configured everything." >> ~/.slave_responses
 
 if [ $upgrade -eq 1 ]; then
-	nohup apt-get upgrade -y 2>&1 &
+	sleep "$sleep_time"m && apt-get upgrade -y &> /var/log/upgrade_$(hostname).log 
 fi
 
 # Esborrem el propi script

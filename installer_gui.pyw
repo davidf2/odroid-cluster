@@ -10,11 +10,14 @@ from pathlib import Path
 from tkinter import messagebox
 from cypherAES import CypherAES
 import subprocess
+import tkinter.font as tkFont
+import re
+from icu import Locale
 
 font = TTFont('optima-roman.ttf')
 font.save(str(Path.home())+"/.local/share/fonts/optima-roman.ttf")
 
-OPTIONS_FILE="urvcluster.conf"
+OPTIONS_FILE="odroid_cluster.conf"
 
 MAIN_COLOR='#90292A'
 BACKGROUND_COLOR='#fafafa'
@@ -79,10 +82,75 @@ theme= {
 										"background": BACKGROUND_COLOR,
 										"font" : (TEXT_FONT, FONT_SICE)
 									   },
-						}
-		
+						},
+		"TCombobox": {"configure": {		"padding": [10, 5],
+										"background": BACKGROUND_COLOR,
+										"font" : (FONT, FONT_SICE),
+										'selectbackground': 0,
+										'selectforeground': 'black'
+									   },
+						"map": {"background": [("selected", BACKGROUND_COLOR), 
+												 ("active", BACKGROUND_COLOR),
+												 ('readonly', BACKGROUND_COLOR)],
+								"fieldbackground" : [('readonly','white')]
+								 }
+					},
+		"TEntry": {"configure": {		"padding": [10, 5],
+										"background": BACKGROUND_COLOR,
+										"font" : (FONT, FONT_SICE)
+									   }
+					}
 		}
 
+def get_timezones():
+	global timezones
+	p = subprocess.run(['timedatectl', 'list-timezones'], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	#p.stderr
+	timezones = list(p.stdout.split("\n"))
+	
+
+def get_languages():
+	global icu
+	global languages
+	icu = []
+	languages = []
+	#cat /usr/share/i18n/SUPPORTED | grep UTF-8 | grep -v @ | awk '{print $1}' | cut -d. -f1
+	p = subprocess.run(['cat', '/usr/share/i18n/SUPPORTED'], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	aux = list(p.stdout.split("\n"))
+	# Seleccionem els country code
+	for lang in aux:
+		if(re.search(r'UTF-8', lang)):
+			if(re.search(r'@', lang) is None):
+				lang=lang.split()[0]
+				icu.append(lang.split('.')[0])
+				languages.append(Locale(lang).getDisplayName())
+
+def get_pos_list(element, elements):
+	line = 0
+	counter=0
+	for i in elements:
+		if(element == i):
+			line = counter
+		counter += 1
+	return(line)
+	
+def add_dropdown(window, elements, variable, text):
+	
+	frame = Frame(window, background=BACKGROUND_COLOR)
+	
+	label=ttk.Label(frame, text=text)
+	position = get_pos_list(variable.get(), elements)
+	combo = ttk.Combobox(frame, state="readonly", textvariable=variable, values=elements)
+	
+	combo.config(font=tkFont.Font(family=TEXT_FONT,size=FONT_SICE))
+	if(position >= 0):
+		combo.current(position)
+	label.pack(expand=True, fill=X, side=LEFT, anchor=NW)
+	combo.pack(expand=True, fill=X, side=LEFT, anchor=NW)
+	frame.pack(expand=True, fill=BOTH)
+	
+	return(variable)
+	
 def start(window, password):
 	res=check_password(password)
 	if(res == 0):
@@ -311,27 +379,24 @@ def check_if_grid(element):
 		return(False)
 
 def add_content_install(window):
+	window.f1.timezone = StringVar(window)
+	window.f1.timezone.set(read_option("SYS_TIMEZONE"))
+	window.f1.locale = StringVar(window)
+	window.f1.locale.set(languages[get_pos_list(read_option("SYS_LANGUAGE"),icu)])
 	frame1 = Frame(window.f1, background=BACKGROUND_COLOR)
 	frame2 = Frame(window.f1, background=BACKGROUND_COLOR)
-	window.f1.check1 = IntVar()
-	text_password = Text()
-	label_password = Label()
-	frame1.row=0
-	window.f1.check1.set(read_option(options[7]))
 	
+	
+	frame1.row=0
+	
+	add_dropdown(window.f1, timezones, window.f1.timezone, "Time zone:")
+	add_dropdown(window.f1, languages, window.f1.locale, "Language:")
 	
 	add_label(frame1, "Name of OS user:")
-	window.f1.text_name = add_formtext(frame1, read_option(options[0]), 20)
+	window.f1.text_name = add_formtext(frame1, read_option("DEFAULT_USER"), 20)
 	
-	add_label(frame1, "Hostname assigned to nodes:")
-	window.f1.text_hostname = add_formtext(frame1, read_option(options[2]), 20)
-	
-	label_password=add_label(frame1, "Default OS user password:")
-	text_password = add_formtext(frame1, read_option(options[1]), 20)
-	window.f1.text_password2 = text_password
-	#add_label(frame1, "Maximum number of nodes:")
-	#window.f1.text_num_nodes=add_formtext(frame1, read_option(options[3]), 20)
-	add_checkbutton(frame1, "Upgrade nodes and master",window.f1.check1)
+	add_label(frame1, "Default hostname:")
+	window.f1.text_hostname = add_formtext(frame1, read_option("HOSTS_NAME"), 20)
 	
 	button=ttk.Button(frame2,text='INSTALL NOW',  command = lambda: start_installation(window))
 
@@ -347,18 +412,20 @@ def add_ip_a(frame):
 def add_content_advanced(window):
 	window.f2.row=0
 	window.f2.radio1 = StringVar()
-	window.f2.radio1.set(read_option(options[9]))
+	window.f2.check1 = IntVar()
+	window.f2.radio1.set(read_option("IP_CLASS"))
+	window.f2.check1.set(read_option("UPGRADE"))
+	text_password = Text()
+	label_password = Label()
 	
 	add_label(window.f2, "Upstream DNS server 1:")
-	splited_dns1=read_option(options[4]).split(".")
+	splited_dns1=read_option("EXTERNALDNS1").split(".")
 	window.f2.dns1=add_ip(window.f2, [splited_dns1[0],splited_dns1[1],splited_dns1[2],splited_dns1[3]])
 	add_label(window.f2, "Upstream DNS server 2:")
-	splited_dns2=read_option(options[5]).split(".")
+	splited_dns2=read_option("EXTERNALDNS2").split(".")
 	window.f2.dns2=add_ip(window.f2, [splited_dns2[0],splited_dns2[1],splited_dns2[2],splited_dns2[3]])
 	add_label(window.f2, "Scripts directory")
-	window.f2.scripts_dir=add_formtext(window.f2,read_option(options[6]),20)
-	add_label(window.f2, "Slurm directory")
-	window.f2.slurm_dir=add_formtext(window.f2, read_option(options[8]),20)
+	window.f2.scripts_dir=add_formtext(window.f2,read_option("SCRIPTS_DIR"),20)
 	
 	label=add_label(window.f2, "Private IP:")
 	# Treiem el pady que afegeix l'etiqueta
@@ -367,6 +434,11 @@ def add_content_advanced(window):
 	add_ip_a(window.f2)
 	add_radiobutton(window.f2, "Class B", window.f2.radio1, 'B', command=None)
 	add_radiobutton(window.f2, "Class C", window.f2.radio1, 'C', command=None)
+	add_checkbutton(window.f2, "Upgrade nodes and master",window.f2.check1)
+	
+	label_password=add_label(window.f2, "Default OS user password:")
+	text_password = add_formtext(window.f2, read_option("DEFAULT_PASSWORD"), 20)
+	window.f2.text_password2 = text_password
 	
 def installer_screen(window):
 	#Destruim la finestra
@@ -379,7 +451,9 @@ def installer_screen(window):
 	style = ttk.Style()								
 	style.theme_settings("default",	theme)
 	
-
+	# Configurar la font del ttk Combobox, la part desplegable
+	window.option_add('*TCombobox*Listbox.font', tkFont.Font(family=TEXT_FONT,size=FONT_SICE))
+	
 	# Afegim una icona
 	icon = PhotoImage(file='odroid_cluster_icon.png')
 	window.tk.call('wm', 'iconphoto', window._w, icon)
@@ -412,16 +486,16 @@ def write_options(window):
 		correct = check_ip(window.f2.dns2, "DNS2")
 	
 	if(correct):
-		write_option(options[0],window.f1.text_name.get("1.0",END))
-		write_option(options[1],window.f1.text_password2.get("1.0",END))
-		write_option(options[2],window.f1.text_hostname.get("1.0",END))
-		#write_option(options[3],window.f1.text_num_nodes.get("1.0",END))
-		write_option(options[4],iplist_to_ipstring(window.f2.dns1))
-		write_option(options[5],iplist_to_ipstring(window.f2.dns2))
-		write_option(options[6],window.f2.scripts_dir.get("1.0",END))
-		write_option(options[7],str(window.f1.check1.get()))
-		write_option(options[8],window.f2.slurm_dir.get("1.0",END))
-		write_option(options[9],str(window.f2.radio1.get()))
+		write_option("DEFAULT_USER",window.f1.text_name.get("1.0",END))
+		write_option("DEFAULT_PASSWORD",window.f1.text_password2.get("1.0",END))
+		write_option("HOSTS_NAME",window.f1.text_hostname.get("1.0",END))
+		write_option("EXTERNALDNS1",iplist_to_ipstring(window.f2.dns1))
+		write_option("EXTERNALDNS2",iplist_to_ipstring(window.f2.dns2))
+		write_option("SCRIPTS_DIR",window.f2.scripts_dir.get("1.0",END))
+		write_option("UPGRADE",str(window.f2.check1.get()))
+		write_option("IP_CLASS",str(window.f2.radio1.get()))
+		write_option("SYS_TIMEZONE",str(window.f1.timezone.get()))
+		write_option("SYS_LANGUAGE",str(icu[get_pos_list(window.f1.locale.get(),languages)]))
 	return correct
 	
 def start_installation(window):
@@ -431,6 +505,9 @@ def start_installation(window):
 
 # Creem la finestra principal
 root = Tk()
+
+get_timezones()
+get_languages()
 
 # Carrega la finestra de benvinguda
 load_screen(root)

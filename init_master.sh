@@ -1,25 +1,78 @@
 #!/bin/bash
 
+
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
 # Deshabilitem Unattended-Upgrade
 sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
 
-cp -p urvcluster.conf /etc
+cp -p odroid_cluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/
 
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
 source network_lib.sh
 
-scripts_path="$(cat /etc/urvcluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
-externaldns1="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
-externaldns2="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
-upgrade="$(cat /etc/urvcluster.conf | grep "UPGRADE" | cut -d= -f2)"
+scripts_path="$(cat /etc/odroid_cluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
+externaldns1="$(cat /etc/odroid_cluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
+externaldns2="$(cat /etc/odroid_cluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
+upgrade="$(cat /etc/odroid_cluster.conf | grep "UPGRADE" | cut -d= -f2)"
 # Agafem el nom de l'usuari no root
-master_name=$(cat /etc/urvcluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
+master_name=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
+
+
+change_password() {
+	export HISTIGNORE=$HISTIGNORE':*passwd*'
+
+	#if [ $(([ "$DISPLAY" ] || [ "$WAYLAND_DISPLAY" ] || [ "$MIR_SOCKET" ] && echo 1) || echo 0) -eq 0 ]; then
+	pass="0"
+	pass2="1"
+
+	while [ $pass != $pass2 ]; do
+		echo "Enter the new password for the master node:"
+		stty -echo
+		read -r pass
+		stty echo
+		echo "Re-enter the new password:"
+		stty -echo
+		read -r pass2
+		stty echo
+	done
+	echo -e "${pass}\n${pass}" | passwd > /dev/null
+	echo -e "${pass}\n${pass}" | passwd $master_name > /dev/null
+	unset pass
+	unset pass2
+}
+
+set_language() {
+	locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
+
+	if [ -z "$locale" ]; then
+		echo ""
+		exit 1
+	fi
+
+	echo "LANG=$locale.UTF-8" > /etc/default/locale
+	echo "LANGUAGE=$locale:$(echo $locale | cut -d_ -f1)" >> /etc/default/locale
+	locale-gen "$locale".utf8
+	update-locale LANG="$locale".UTF-8
+
+	#source .profile
+	#source .bashprofile
+
+	# Actualitza les varaibles LANG i LANGUAGE
+	. /etc/default/locale
+	runuser -l  $master_name -c '. /etc/default/locale'
+
+	apt-get install $(check-language-support -l "$locale") -y
+}
 
 add_ssh() {
 	# Instal.lem openssh server
@@ -206,6 +259,9 @@ add_monitoring() {
 	./start-monitoring.sh
 }
 
+# Obliguem a l'usuari a canviar la contrasenya del master
+change_password
+
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d "$scripts_path" ]; then
 	mkdir "$scripts_path"
@@ -227,8 +283,10 @@ apt-get update -y
 # Modifiquem el hostname a master
 hostnamectl set-hostname master
 
+set_language
+
 #Fiquem a zona horaria i actualitzem l'hora
-timedatectl set-timezone Europe/Madrid
+timedatectl set-timezone "$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)"
 apt-get install chrony -y
 systemctl enable --now chronyd
 

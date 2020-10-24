@@ -108,13 +108,16 @@ def askPassword(window):
 	# Modifiquem el color de fons, titol i tamany
 	pass_window.configure(background=BACKGROUND_COLOR)
 	pass_window.title("")
-	pass_window.geometry("400x250")
+	pass_window.geometry("400x350")
 	center_window(pass_window)
 	
-	ttk.Label(pass_window, text="Enter your password").pack(pady=20)
+	ttk.Label(pass_window, text="Enter the new password\nfor the master node:", justify=CENTER).pack(pady=10)
 	pass_window.entry=ttk.Entry(pass_window, textvariable=password, show="*")
-	pass_window.entry.pack(pady=20)
-	ttk.Button(pass_window, text="Start", command= lambda: start(pass_window, password.get())).pack(pady=20, side=BOTTOM)
+	pass_window.entry.pack(pady=10)
+	ttk.Label(pass_window, text="Re-enter the new password:").pack(pady=10)
+	pass_window.entry=ttk.Entry(pass_window, textvariable=password, show="*")
+	pass_window.entry.pack(pady=10)
+	ttk.Button(pass_window, text="Continue", command= lambda: start(pass_window, password.get())).pack(pady=20, side=BOTTOM)
 	ttk.Label(pass_window, textvariable=pass_window.error_text, foreground="red").pack()
 
 
