@@ -14,65 +14,31 @@ option=$1
 mac=$2
 ip=$3
 
-get_date(){
-	time="$1"
-
-	if [ -z "$1" ]; then
-	      echo $(date +"%d-%m-%y-%H-%M")
-	else
-	      echo $(date +"%d-%m-%y-%H-%M" -d "$time minutes")
-	fi
-	
+get_time(){
+	expr $(date +%s) / 60
 }
 
 # Funció per calcular els temps de sleep entre upgrade i upgrade
 get_sleep_time() {
-	time=0
-	sleep_time=$(cat /etc/odroid_cluster.conf | grep "UPGRADE_SLEEP" | cut -d= -f2)
-
-	if [ -f "${scripts_path}/last_upgrade" ]; then
-		last=$(cat "${scripts_path}/last_upgrade")
-		# Guardem el resultat en un array per treballar mes comodament
-		IFS='-' read -a last_date <<< "$last"
-		IFS='-' read -a act_date <<< $(get_date)
-
-		# Mirem si el dia, mes i any guardats son els mateixos que lactual
-		if [ "${last_date[0]}" -eq "${act_date[0]}" ] && [ "${last_date[1]}" -eq "${act_date[1]}" ] && [ "${last_date[2]}" -eq "${act_date[2]}" ]; then
-			# Mirem si sha fet a la mateixa hora
-			if [ "${last_date[3]}" -eq "${act_date[3]}" ]; then
-				time=$(expr "${act_date[4]}" - "${last_date[4]}")
-			else
-				# Mirem si ha canviat d'hora
-				if [ $(expr "${act_date[3]}" - "${last_date[3]}") -eq 1 ]; then
-					time=$(expr 60 - "${last_date[4]}" + "${act_date[4]}")			
-				fi
-			fi
-		else
-			if[]; then
-				if [ "${last_date[3]}" -eq 23 ] && [ "${act_date[3]}" -eq 0 ]; then
-						time=$(expr 60 - "${last_date[4]}" + "${act_date[4]}")
-				fi
-			fi
-		fi
-	fi
-
-	
+        upgrade_time=$(cat /etc/odroid_cluster.conf | grep "UPGRADE_SLEEP" | cut -d= -f2)
+        act_time=$(get_time)
 
 
-	if [ "$time" -gt "$sleep_time" ]; then
-		time=0
-	else
-		if [ "$time" -ne 0 ]; then
-			if [ "$time" -lt "$sleep_time" ]; then
-				time=$(expr "$time" - 1)
-			fi
-			time=$(expr "$sleep_time" - "$time")
-		fi
-	fi
+        if [ -f "${scripts_path}/last_upgrade" ]; then
+                end_time=$(cat "${scripts_path}/last_upgrade")
+                sleep_time=$(expr $end_time - $act_time)
 
-	echo $(get_date "$time") > "${scripts_path}/last_upgrade"
-
-	echo "$time"
+                if [ $end_time -gt $act_time ]; then
+                        echo "$(expr $end_time + $upgrade_time)" > "${scripts_path}/last_upgrade"
+                        echo "$sleep_time"
+                else
+                        echo "$(expr $act_time + $upgrade_time)" > "${scripts_path}/last_upgrade"
+                        echo "0"
+                fi
+        else
+                echo "$(expr $act_time + $upgrade_time)" > "${scripts_path}/last_upgrade"
+                echo "0"
+        fi
 }
 
 
