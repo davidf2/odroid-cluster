@@ -28,6 +28,24 @@ KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
 
+
+add_user() {
+	password="$1"
+	
+	# Comprova si existeix l'usuari per defecte
+	if [ ! $(id -u "$1" 2>/dev/null) ]; then
+		# Encripta la contrasenya
+		enc_pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
+		# Afegeix el usuari per defecte
+		useradd "$master_name" -m -p "$enc_pass" -s "/bin/bash"
+		# Crea els directoris per defecte al seu home directory
+		runuser -l "$master_name" -c '/usr/bin/xdg-user-dirs-update'
+		# Afegeix l'usuari com a sudoer
+		usermod -aG sudo "$master_name"
+	fi
+}
+
+
 change_password() {
 	export HISTIGNORE=$HISTIGNORE':*passwd*'
 
@@ -35,6 +53,7 @@ change_password() {
 	pass="0"
 	pass2="1"
 
+	# Demana la contrasenya dos cops, fins que coincideixin
 	while [ $pass != $pass2 ]; do
 		echo "Enter the new password for the master node:"
 		stty -echo
@@ -45,34 +64,53 @@ change_password() {
 		read -r pass2
 		stty echo
 	done
-	echo -e "${pass}\n${pass}" | passwd > /dev/null
-	echo -e "${pass}\n${pass}" | passwd $master_name > /dev/null
+
+	# Afegim l'usuari per defecte si no existeix
+	add_user "$pass"
+	# Modifica la contrasenya de l'usuari root i el per defecte
+	echo -e "${pass}\n${pass}" | passwd &> /dev/null
+	echo -e "${pass}\n${pass}" | passwd $master_name &> /dev/null
 	unset pass
 	unset pass2
 }
 
 set_language() {
-	locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
+        locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
 
-	if [ -z "$locale" ]; then
-		echo ""
-		exit 1
-	fi
+        if [ -z "$locale" ]; then
+                echo "You need to enter a language in odroid_cluster.conf"
+                exit 1
+        fi
 
-	echo "LANG=$locale.UTF-8" > /etc/default/locale
-	echo "LANGUAGE=$locale:$(echo $locale | cut -d_ -f1)" >> /etc/default/locale
-	locale-gen "$locale".utf8
-	update-locale LANG="$locale".UTF-8
+        if [ $(cat /usr/share/i18n/SUPPORTED | grep ^"$locale".UTF-8 | wc -l) -eq 0 ]; then
+                echo "Incorrect language"
+                exit 1
+        fi
 
-	#source .profile
-	#source .bashprofile
+        if [ $(grep "source /etc/default/locale" /etc/profile | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /etc/profile
+        fi
 
-	# Actualitza les varaibles LANG i LANGUAGE
-	. /etc/default/locale
-	runuser -l  $master_name -c '. /etc/default/locale'
+        if [ $(grep "source /etc/default/locale" /etc/bash.bashrc | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /etc/bash.bashrc
+        fi
 
-	apt-get install $(check-language-support -l "$locale") -y
+        # Instal.lem el nou idioma
+        locale-gen "$locale".utf8
+
+        # Seleccionem el nou idioma
+        #update-locale LANG="$locale".UTF-8 LANGUAGE
+        localectl set-locale LANG="$locale".UTF-8 LANGUAGE="$locale".UTF-8:"$(echo $locale | cut -d_ -f1)"
+
+        # Actualitza les varaibles LANG i LANGUAGE
+        source /etc/default/locale
+
+        su $master_name -c 'source /etc/default/locale'
+
+        # Instal.lem dependencies del nou idioma per tal de traduir-ho tot.
+        apt-get install $(check-language-support -l "$locale") -y
 }
+
 
 add_ssh() {
 	# Instal.lem openssh server
