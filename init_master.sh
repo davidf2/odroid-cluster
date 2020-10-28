@@ -27,7 +27,9 @@ master_home=$(eval echo "~$master_name")
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
-
+locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
+layout="$(cat /etc/odroid_cluster.conf | grep "LAYOUT" | cut -d= -f2)"
+variant="$(cat /etc/odroid_cluster.conf | grep "VARIANT" | cut -d= -f2)"
 
 add_user() {
 	password="$1"
@@ -75,7 +77,8 @@ change_password() {
 }
 
 set_language() {
-        locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
+        
+		locale="$1"
 
         if [ -z "$locale" ]; then
                 echo "You need to enter a language in odroid_cluster.conf"
@@ -111,6 +114,32 @@ set_language() {
         apt-get install $(check-language-support -l "$locale") -y
 }
 
+set_layout() {
+	
+	layout="$1"
+	variant="$2"
+		
+    if [ $# -ne 2 ]; then
+            echo -e "It is necessary to pass 2 arguments, the first corresponding to the \nlayout and the second to the variant"
+            exit 1
+    fi
+	
+	if [ "$layout" == "$variant" ]; then
+		variant="basic"
+	fi
+
+	setxkbmap -layout $layout -variant $variant
+
+	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 0 ]; then
+            sed -i '/^setxkbmap/d' /etc/profile
+            echo "setxkbmap -layout $layout -variant $variant" >> /etc/profile
+    fi
+
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 0 ]; then
+             sed -i '/^setxkbmap/d' /etc/bash.bashrc
+            echo "setxkbmap -layout $layout -variant $variant" >> /etc/bash.bashrc
+    fi
+}
 
 add_ssh() {
 	# Instal.lem openssh server
@@ -174,6 +203,7 @@ add_dnsmasq() {
 
 	ip="$1"
 	lan_interface="$2"
+	mask="$3"
 
 	# Instal.lem dnsmasq i el deshabilitem
 	apt-get install dnsmasq -y 2> /dev/null
@@ -191,6 +221,8 @@ add_dnsmasq() {
 		bash -c "cp -p /etc/dnsmasq.conf > /etc/dnsmasq.conf.back"
 	fi
 
+	first_ip=$(calculate_first_ip "$ip" "$mask")
+	last_ip=$(calculate_last_ip "$ip" "$mask")
 	# Carreguem la configuració per a dnsmasq
 	echo "
 	listen-address=::1,127.0.0.1,${ip}
@@ -209,7 +241,7 @@ add_dnsmasq() {
 	#local=/lan/
 	
 	interface=${lan_interface}
-	dhcp-range=${ip},172.16.0.254,12h
+	dhcp-range=${first_ip},${last_ip},12h
 	# Establecer la puerta de enlace predeterminada.
 	dhcp-option=option:router,${ip}
 	# Establecer servidores DNS para anunciar
@@ -311,6 +343,9 @@ cp -p dhcp_script.sh "$scripts_path"/
 cp -p init_slave.sh "$scripts_path"/
 cp -p add_slave.sh "$scripts_path"/
 
+# Creem el directori on guardarem alguns logs
+mkdir /var/log/odroid_cluster
+chown "$master_name": /var/log/odroid_cluster
 
 # Solucionem error de claus amb l'update
 apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
@@ -321,7 +356,11 @@ apt-get update -y
 # Modifiquem el hostname a master
 hostnamectl set-hostname master
 
-set_language
+# Modifiquem l'idioma
+set_language "$locale"
+
+# Modifiquem el teclat
+set_layout "$layout" "$variant"
 
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone "$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)"
@@ -374,7 +413,7 @@ ifup --force "${net_array[3]}"
 
 # Instal.lem el servidor dns i dhcp dnsmasq i el configurem
 # AIXÓ SEMPRE HA DE SER L'ULTIM QUE FEM ABANS DEL UPGRADE
-add_dnsmasq "${net_array[0]}" "${net_array[3]}"
+add_dnsmasq "${net_array[0]}" "${net_array[3]}" "${net_array[1]}"
 
 # Instal.lem el software de monitoreig fet per Joan Jara Bosch
 add_monitoring

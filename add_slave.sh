@@ -13,38 +13,46 @@ export HISTIGNORE=$HISTIGNORE':*sudo -S*:*sshpass*'
 
 default_password=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_PASSWORD" | cut -d= -f2)
 # Agafem el nom de l'usuari no root
-master_name=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
+user_name=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
-master_home=$(eval echo "~$master_name")
+user_home=$(eval echo "~$user_name")
+upgrade_time=$(cat /etc/odroid_cluster.conf | grep "UPGRADE_SLEEP" | cut -d= -f2)
 
-KEY_FILE="${master_home}/.ssh/id_rsa.pub"
-KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
+language=$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)
+layout=$(cat /etc/odroid_cluster.conf | grep "LAYOUT" | cut -d= -f2)
+variant=$(cat /etc/odroid_cluster.conf | grep "VARIANT" | cut -d= -f2)
+timezone=$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)
+
+locale="$language;$layout;$variant;$timezone"
+
+KEY_FILE="${user_home}/.ssh/id_rsa.pub"
+KNOWN_HOSTS="${user_home}/.ssh/known_hosts"
 
 host="$1" # $1 la ip del slave
-name="$2" # $2 nom del slave
-passphrase="$3" # $4 passphrase
+passphrase="$2" # $4 passphrase
 
-# Comprovem que es passi com a minim 3 parametres
-if [ $# -lt 2 ]; then
-	echo -e "Error, at least you have to enter 3 parameters, for more information \n\t add_slave -h"
+
+
+# Comprovem que es passi com a minim 1 parametre
+if [ $# -lt 1 ]; then
+	echo -e "Error, at least you have to enter 1 parameter, for more information \n\t add_slave -h"
 	exit 1
 fi
 
-
 # Afegim el fingerprint al fitxer de hosts coneguts
-su $master_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
+su $user_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
 
 # Copiem la clau publica al slave
-su $master_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $name@$host"
+su $user_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $user_name@$host"
 
 # Copiem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${name}@${host}:Documents"
+su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${user_name}@${host}:Documents"
 
 # Agafem la IP de la xarxa interna
 interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $master_name -c "sshpass -p ${default_password} ssh -t ${name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave \" >> /tmp/init_slave_${host}.out 2>&1"
+su $user_name -c "sshpass -p ${default_password} ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /tmp/init_slave_${host}.out 2>&1"
 
 

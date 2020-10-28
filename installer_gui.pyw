@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import subprocess
+from pathlib import Path
+import time
+
+p=subprocess.call("sudo "+str(Path.cwd())+"/gui_dependencies.sh", shell=True)
+
 from tkinter import ttk
 from tkinter import *  
 from PIL import ImageTk,Image
 import time
 from fontTools.ttLib import TTFont
-from pathlib import Path
 from tkinter import messagebox
-from cypherAES import CypherAES
-import subprocess
 import tkinter.font as tkFont
 import re
 from icu import Locale
@@ -97,6 +100,56 @@ theme= {
 				}
 		}
 
+class Variant:
+	def __init__(self, name, code):
+		self.name=name
+		self.code=code
+	
+	def get_name(self):
+		return self.name
+	
+	def get_code(self):
+		return self.code
+		
+class Layout:
+	def __init__(self, name, code):
+		self.name=name
+		self.code=code
+		self.variants=[]
+	
+	def add_variant(self, variant):
+		self.variants.append(variant)
+	
+	def get_name(self):
+		return self.name
+	
+	def get_code(self):
+		return self.code
+	
+	def get_variant(self, index):
+		try:
+			return self.variants[index]
+		except(IndexError):
+			return None
+	
+	def get_num_variants(self):
+		return len(self.variants)
+	
+	def get_variants(self):
+		return self.variants
+	
+	def get_variants_name(self):
+		names=[]
+		for i in self.variants:
+			names.append(i.get_name())
+		return names
+	
+	def get_variants_code(self):
+		codes=[]
+		for i in self.variants:
+			codes.append(i.get_code())
+		return codes
+
 def get_timezones():
 	global timezones
 	p = subprocess.run(['timedatectl', 'list-timezones'], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -119,6 +172,49 @@ def get_languages():
 				lang=lang.split()[0]
 				icu.append(lang.split('.')[0])
 				languages.append(Locale(lang).getDisplayName())
+
+def read_layout_file(file, path):
+	f = open(path+"/"+file, "r")
+	
+	code=None
+	name=None
+	layout_name=None
+	
+	for line in f.readlines():
+		if(re.search(r'xkb_symbols', line)):
+			code = re.split('"', line)[1].rstrip()
+		elif(re.search(r'name\[', line)):
+			name = re.split('"', line)[1].rstrip()
+			if(code != "basic" and name == layout_name):
+				name = name + " " + code
+
+		if(code == "basic" and name != None):
+			layout_name=name
+		
+		if(layout_name != None and code != None and name != None):
+			if(code == "basic"):
+				layouts[name]=Layout(name,file)
+				layouts[layout_name].add_variant(Variant(name, file))
+			else:
+				layouts[layout_name].add_variant(Variant(name, code))
+			code = None
+			name = None
+	
+			
+def get_layouts():
+	global layouts
+	
+	layouts = {}
+	files = []
+	path = '/usr/share/X11/xkb/symbols'
+	p = subprocess.run(['ls', '-p', path], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	for file in (p.stdout.split("\n")):
+		if(re.search(r'/', file) is None and file != ''):
+			files.append(file)
+	
+	for i in files:
+		read_layout_file(i,path)
+	layouts.pop('Empty', None)
 
 def get_pos_list(element, elements):
 	line = 0
@@ -297,30 +393,29 @@ def add_menu(window):
 	window.notebook.add(window.f2, text="Advanced")
 	window.notebook.add(window.f3, text="Slurm")
 
-def add_dropdown(window, elements, variable, text):
-	
-	frame = ttk.Frame(window)
-	
-	label=ttk.Label(frame, text=text)
+def add_simple_dropdown(window, elements, variable, side=RIGHT):
 	position = get_pos_list(variable.get(), elements)
-	combo = ttk.Combobox(frame, state="readonly", textvariable=variable, values=elements)
-	
+	combo = ttk.Combobox(window, state="readonly", textvariable=variable, values=elements)
 	combo.config(font=(TEXT_FONT,FONT_SICE))
 	if(position >= 0):
 		combo.current(position)
+	combo.pack(fill=X, side=side)
+	
+	return(combo)
+
+def add_dropdown(window, elements, variable, text=None ):
+	
+	frame = ttk.Frame(window)
+	
+	combo = add_simple_dropdown(frame, elements, variable)
+	
+	label=ttk.Label(frame, text=text)
+	
 	label.pack( fill=X, side=LEFT)
-	combo.pack(fill=X, side=RIGHT)
+
 	frame.pack(expand=True, fill=BOTH, side=TOP)
 	
-	return(variable)
-
-def update_list(last, first, com, var):
-	new_list=[]
-	
-	for i in range(int(first.get()),int(last)+1):
-		new_list.append(str(i))
-	com['values'] = new_list
-	var.set(str(int(first.get())))
+	return(combo)
 	
 def add_ip_dropdown(window, elements, variable, combo2=None, variable2=None):
 	position = get_pos_list(variable.get(), elements)
@@ -330,8 +425,6 @@ def add_ip_dropdown(window, elements, variable, combo2=None, variable2=None):
 	if(position >= 0):
 		combo.current(position)
 	combo.pack(side=LEFT)
-	if(combo2 != None and combo2 != None):
-		combo.bind('<<ComboboxSelected>>', lambda last=elements[len(elements)-1], first=variable, com=combo2, var=variable2 : update_list(elements[len(elements)-1], first, com, var))
 	
 	return(combo)
 
@@ -369,11 +462,10 @@ def add_radiobutton_group(window, label_text, var, text_list, options_list, comm
 	private_ip_frame.pack(expand=True, fill=X)
 	
 def add_checkbutton(window, text, var):
-	frame = ttk.Frame(window)
 	
-	check_button = ttk.Checkbutton(frame, text=text, variable=var, compound=LEFT)
+	check_button = ttk.Checkbutton(window, text=text, variable=var, compound=LEFT)
 	check_button.pack(side=LEFT)
-	frame.pack(expand=True, fill=X)
+	
 	return(check_button)
 
 def add_ip(window, default_ip, text):
@@ -387,7 +479,6 @@ def add_ip(window, default_ip, text):
 	for i in range(4):
 		ip.append(Text(subframe, height=1, width=3,font=(TEXT_FONT,FONT_SICE)))
 	
-	
 	c=len(ip)-1
 	for i in reversed(ip):
 		i.pack(side=RIGHT)
@@ -400,83 +491,142 @@ def add_ip(window, default_ip, text):
 
 	return(ip)
 
+def int_to_byte(number):
+	byte=str("{0:8b}".format(number))
+	
+	return(byte)
+
+    
+def cidr_to_mask(cidr):
+	conv_mask=""
+	
+	i2=0
+	
+	for i in range(0,cidr):
+		if(i2%8 == 0 and i2 !=0):
+			conv_mask = conv_mask + ":"
+		conv_mask = conv_mask + "1"
+		i2+=1
+	
+	for i in range(cidr,32):
+		if(i2%8 == 0 and i2 !=0):
+			conv_mask = conv_mask + ":"
+		conv_mask = conv_mask + "0"
+		i2+=1
+	
+	int_mask=conv_mask.split(":")
+	
+	conv_mask=str(int(int_mask[0], 2))
+	conv_mask = conv_mask + ":"
+	conv_mask=conv_mask + str(int(int_mask[1], 2))
+	conv_mask = conv_mask + ":"
+	conv_mask=conv_mask + str(int(int_mask[2], 2))
+	conv_mask = conv_mask + ":"
+	conv_mask=conv_mask + str(int(int_mask[3], 2))
+	
+	return(conv_mask)
+
+def mask_to_cidr(my_mask):
+	bit_mask=""
+	
+	for i in my_mask.split(":"):
+		bit_mask+=str('{:08b}'.format(int(i)))
+	
+	count = 0
+	for i in bit_mask: 
+		if(i == '1'): 
+			count = count + 1
+	return(count)
+	
 """ Funció per a resetejar els valors de les varaibles que formen el rang de IP privada A, a més 
 	modifica els valors per defecte dels dos primers combobox que formen les dues IP, també modifica 
 	els parametres de la funció que es crida al modificar el combobox del segon  nombre de la ip """
 def set_ip_a():
-	ip1.ip_num1.set(10)
-	ip1.ip_num2.set(0)
-	ip1.ip_num3.set(0)
-	ip1.ip_num4.set(1)
-	ip2.ip_num1.set(10)
-	ip2.ip_num2.set(0)
-	ip2.ip_num3.set(0)
-	ip2.ip_num4.set(1)
-	ip1.combo1['values'] = "10"
-	ip2.combo1['values'] = "10"
-	ip1.combo2['values'] = number_list
-	ip2.combo2['values'] = number_list
-	ip1.combo2.bind('<<ComboboxSelected>>', lambda last=number_list[len(number_list)-1], first=ip1.ip_num2, com=ip2.combo2, var=ip2.ip_num2 : update_list(number_list[len(number_list)-1], first, com, var))
+	mask_values = []
+	ip.ip_num1.set(10)
+	ip.ip_num2.set(0)
+	ip.ip_num3.set(0)
+	ip.ip_num4.set(1)
+	ip.combo1['values'] = "10"
+	ip.combo2['values'] = number_list
+	mask.min_value=8
+	mask.set(8)
+	for i in range(mask.min_value, 31):
+		mask_values.append(i)
+	mask.combo_mask['values'] = mask_values
+	ip.combo2.bind('<<ComboboxSelected>>', noneFunct)
+def noneFunct(event):
+	None
+
+def set_min_b_mask(event):
+	mask_values=[]
+	
+	# Busquem la mascara minima per aquesta xarxa
+	last_one=8
+	counter=0
+	for i in int_to_byte(ip.ip_num2.get()):
+		counter+=1
+		if(i == "1"):
+			last_one=counter+8
+	mask.set(16)
+	mask.min_value=last_one
+	for i in range(mask.min_value, 31):
+		mask_values.append(i)
+
+	mask.combo_mask['values'] = mask_values
 
 """ Funció per a resetejar els valors de les varaibles que formen el rang de IP privada B, a més 
 	modifica els valors per defecte dels dos primers combobox que formen les dues IP, també modifica 
 	els parametres de la funció que es crida al modificar el combobox del segon  nombre de la ip """
 def set_ip_b():
 	elements=[]
-	ip1.ip_num1.set(172)
-	ip1.ip_num2.set(16)
-	ip1.ip_num3.set(0)
-	ip1.ip_num4.set(1)
-	ip2.ip_num1.set(172)
-	ip2.ip_num2.set(16)
-	ip2.ip_num3.set(0)
-	ip2.ip_num4.set(1)
+	mask_values = []
+	ip.ip_num1.set(172)
+	ip.ip_num2.set(16)
+	ip.ip_num3.set(0)
+	ip.ip_num4.set(1)
 	
 	for i in range(16,32):
 		elements.append(str(i))
 		
-	ip1.combo1['values'] = "172"
-	ip2.combo1['values'] = "172"
-	ip1.combo2['values'] = elements
-	ip2.combo2['values'] = elements
-	ip1.combo2.bind('<<ComboboxSelected>>', lambda last=elements[len(elements)-1], first=ip1.ip_num2, com=ip2.combo2, var=ip2.ip_num2 : update_list(elements[len(elements)-1], first, com, var))
+	ip.combo1['values'] = "172"
+	ip.combo2['values'] = elements
+	
+	set_min_b_mask(None)
+	
+	ip.combo2.bind('<<ComboboxSelected>>', set_min_b_mask)
 
 """ Funció per a resetejar els valors de les varaibles que formen el rang de IP privada C, a més 
 	modifica els valors per defecte dels dos primers combobox que formen les dues IP """
 def set_ip_c():
-	ip1.ip_num1.set(192)
-	ip1.ip_num2.set(168)
-	ip1.ip_num3.set(0)
-	ip1.ip_num4.set(1)
-	ip2.ip_num1.set(192)
-	ip2.ip_num2.set(168)
-	ip2.ip_num3.set(0)
-	ip2.ip_num4.set(1)
-	ip1.combo1['values'] = "192"
-	ip2.combo1['values'] = "192"
-	ip1.combo2['values'] = "168"
-	ip2.combo2['values'] = "168"
+	mask_values = []
+	ip.ip_num1.set(192)
+	ip.ip_num2.set(168)
+	ip.ip_num3.set(0)
+	ip.ip_num4.set(1)
+	ip.combo1['values'] = "192"
+	ip.combo2['values'] = "168"
 	
-
+	mask.set(24)
+	mask.min_value=16
+	for i in range(mask.min_value, 31):
+		mask_values.append(i)
+	mask.combo_mask['values'] = mask_values
+	ip.combo2.bind('<<ComboboxSelected>>', noneFunct)
 
 """ Funció per afegir un 8 combobox per poder afegir el rang de ip 
 	privada """
 def add_private_ip(window, frame):
 	# Declarem les variables necessaries com a globals
-	global ip1, ip2
+	global ip
 	global number_list
-	ip1 = ttk.Frame(window);
-	ip2 = ttk.Frame(window);
+	ip = ttk.Frame(window);
 	
-	ip1.ip_num1 = IntVar()
-	ip1.ip_num2 = IntVar()
-	ip1.ip_num3 = IntVar()
-	ip1.ip_num4 = IntVar()
-	
-	ip2.ip_num1 = IntVar()
-	ip2.ip_num2 = IntVar()
-	ip2.ip_num3 = IntVar()
-	ip2.ip_num4 = IntVar()
+	ip.ip_num1 = IntVar()
+	ip.ip_num2 = IntVar()
+	ip.ip_num3 = IntVar()
+	ip.ip_num4 = IntVar()
+
 	
 	number_list=[]
 	number_list_end=[]
@@ -490,41 +640,153 @@ def add_private_ip(window, frame):
 	
 	subframe = ttk.Frame(frame)
 	
-	ip2.combo4=add_ip_dropdown(subframe, number_list_end, ip2.ip_num4)
-	add_label(subframe, " . ").pack(side=RIGHT)
-	ip2.combo3=add_ip_dropdown(subframe, number_list, ip2.ip_num3)
-	add_label(subframe, " . ").pack(side=RIGHT)
-	ip2.combo2=add_ip_dropdown(subframe, number_list, ip2.ip_num2)
-	add_label(subframe, " . ").pack(side=RIGHT)
-	ip2.combo1=add_ip_dropdown(subframe, ["0"], ip2.ip_num1)
+	add_mask(window, subframe)
 	
-	ip1.combo1=add_ip_dropdown(subframe, ["0"], ip1.ip_num1, ip2.combo1, ip2.ip_num1)
+	add_label(frame, "IP: ")
+	ip.combo1=add_ip_dropdown(subframe, ["0"], ip.ip_num1)
 	add_label(subframe, " . ")
-	ip1.combo2=add_ip_dropdown(subframe, number_list, ip1.ip_num2, ip2.combo1, ip2.ip_num2)
+	ip.combo2=add_ip_dropdown(subframe, number_list, ip.ip_num2)
 	add_label(subframe, " . ")
-	ip1.combo3=add_ip_dropdown(subframe, number_list, ip1.ip_num3, ip2.combo3, ip2.ip_num3)
+	ip.combo3=add_ip_dropdown(subframe, number_list, ip.ip_num3)
 	add_label(subframe, " . ")
-	ip1.combo4=add_ip_dropdown(subframe, number_list_end, ip1.ip_num4, ip2.combo4, ip2.ip_num4)
+	ip.combo4=add_ip_dropdown(subframe, number_list_end, ip.ip_num4)
+	
+	
+	splited_ip=read_option("IP").split(".")
+	
+	ip.ip_num1.set(splited_ip[0])
+	ip.ip_num2.set(splited_ip[1])
+	ip.ip_num3.set(splited_ip[2])
+	ip.ip_num4.set(splited_ip[3])
+	subframe.pack(expand=True, fill=BOTH)
+	
+	mask.set(int(mask_to_cidr(read_option("MASK"))))
+
+def add_mask(window, frame):
+	global mask
+	
+	mask_values=[]
+	mask = IntVar()
+
+	#mask.set(int(mask_to_cidr(read_option("MASK"))))
 	
 	if(window.f2.radio1.get() == 'C'):
-		set_ip_c()
+		mask.min_value=16
 		
 	elif(window.f2.radio1.get() == 'B'):
-		set_ip_b()
+		mask.min_value=12
 		
 	elif(window.f2.radio1.get() == 'A'):
-		set_ip_a()
-		
-		
-		
-	ip2.combo1.pack(side=RIGHT)
-	ip2.combo2.pack(side=RIGHT)
-	ip2.combo3.pack(side=RIGHT)
-	ip2.combo4.pack(side=RIGHT)
+		mask.min_value=8
 	
-	subframe.pack(expand=True, fill=BOTH)
+	
+	for i in range(mask.min_value, 31):
+		mask_values.append(i)
+	
+	mask.combo_mask = add_ip_dropdown(frame, mask_values, mask)
+	add_label(frame, "Mask: ").pack(side=RIGHT)
+	mask.combo_mask.pack(side=RIGHT)
+
+def get_list(dict): 
+	list = [] 
+	for key in dict.keys(): 
+		list.append(key)
+	return list
+
+def refresh_variants(combo, combo2, var, var2):
+	combo2['values'] = sorted(layouts[var.get()].get_variants_name())
+	var2.set(var.get())
+	
+def key_of_value(dict, value2):
+	for key, value in dict.items():
+		if(value.get_code() == value2):
+			return key
+	return None
 
 
+def add_listbox(window, elements):
+	listbox = Listbox(window, font=(TEXT_FONT,FONT_SICE))
+	scrollbar = Scrollbar(window)
+	scrollbar_x = Scrollbar(window, orient=HORIZONTAL) 
+	for item in elements:
+		listbox.insert(END, item)
+	
+	listbox.config(yscrollcommand = scrollbar.set)
+	listbox.config(xscrollcommand = scrollbar_x.set) 
+	scrollbar.config(command = listbox.yview)
+	scrollbar_x.config(command = listbox.xview)
+	scrollbar_x.pack(side = BOTTOM, fill = X)
+	listbox.pack(expand=True, side = LEFT, fill = BOTH)
+	scrollbar.pack(side = RIGHT, fill = BOTH)
+	
+	return(listbox)
+	
+
+def refresh_variants2(listb, listb2, var, var2):
+	try:
+		var.set(listb.get(listb.curselection()))
+		listb2.delete(0,END)
+		for item in sorted(layouts[var.get()].get_variants_name()):
+			listb2.insert(END, item)
+		var2.set(var.get())
+	except TclError:
+		None
+		
+def set_varaint(listb, var):
+	try:
+		var.set(listb.get(listb.curselection()))
+	except TclError:
+		None
+  
+def add_layouts(window):
+	global layout
+	global variant
+	
+	layout=StringVar()
+	variant=StringVar()
+	layout.set(key_of_value(layouts,read_option("LAYOUT")))
+	
+	for i in layouts[layout.get()].get_variants():
+		if(read_option("VARIANT") == i.get_code()):
+			variant.set(i.get_name())
+	
+	sorted_layouts=sorted(layouts)
+	sorted_variants=sorted(layouts[layout.get()].get_variants_name())
+	
+	frame = ttk.Frame(window)
+	frame_label = ttk.Frame(window)
+	
+	# Afegim una etiqueta, per indicar que 'es
+	add_label(frame_label, "Select Keyboard layout:").pack(side=LEFT, anchor=S)
+	frame_label.pack(expand=True, fill=BOTH)
+	
+	subframe1 = ttk.Frame(frame)
+	subframe2 = ttk.Frame(frame)
+	# Frame per fer un espai intermig
+	padding = ttk.Frame(frame)
+	# Creem els dos listbox
+	listbox1=add_listbox(subframe1, sorted_layouts)
+	listbox2=add_listbox(subframe2, sorted_variants)
+	# Seleccionem el item del listbox segons la lectura del fitxer
+	listbox1.selection_set(get_pos_list(layout.get(),sorted_layouts))
+	listbox2.selection_set(get_pos_list(variant.get(),sorted_variants))
+	
+	# Fem pack dels subframes
+	subframe1.pack(expand=True,side=LEFT, fill=X)
+	padding.pack(expand=True, side=LEFT)
+	subframe2.pack(expand=True,side=RIGHT, fill=X)
+	
+	# Fem que el scrollbar es mogui als elements seleccionats
+	listbox1.see(get_pos_list(layout.get(),sorted_layouts))
+	listbox2.see(get_pos_list(variant.get(),sorted_variants))
+	
+	# Afegim les funcions que s'executaran al seleccionar els listbox
+	listbox1.bind('<<ListboxSelect>>', lambda lb1=listbox1, lb2=listbox2, var=layout, var2=variant : refresh_variants2(listbox1, listbox2, var, var2))
+	listbox2.bind('<<ListboxSelect>>', lambda lb=listbox2, var=variant : set_varaint(listbox2, var))
+	
+	
+	frame.pack(expand=True, fill=BOTH, anchor=N)
+	
 
 def add_content_install(window):
 	padding_bottom = ttk.Frame(window.f1)
@@ -544,6 +806,7 @@ def add_content_install(window):
 	add_dropdown(content, languages, window.f1.locale, "Language:")
 	
 	
+	add_layouts(content)
 	
 	
 	button=ttk.Button(padding_bottom,text='INSTALL NOW',  command = lambda: start_installation(window))
@@ -552,12 +815,11 @@ def add_content_install(window):
 	padding_left.pack(expand=True, side=LEFT)
 	content.pack(expand=True, fill=BOTH, side=LEFT)
 	padding_right.pack(expand=True, fill=BOTH, side=RIGHT)
-	padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
+	#padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
 	
 	
 	button.pack(expand=True, pady=20)
-
-
+	
         
 def add_content_advanced(window):
 	window.f2.radio1 = StringVar()
@@ -566,13 +828,14 @@ def add_content_advanced(window):
 	window.f2.check1.set(read_option("UPGRADE"))
 	text_password = Text()
 	
+	window.f2.upgrade_time = StringVar()
 	padding_bottom = ttk.Frame(window.f2)
 	padding_up = ttk.Frame(window.f2)
 	content = ttk.Frame(window.f2)
 	padding_left = ttk.Frame(window.f2)
 	padding_right = ttk.Frame(window.f2)
 	padding_right2 = ttk.Frame(window.f2)
-	
+	window.f2.upgrade_time.set(read_option("UPGRADE_SLEEP"))
 	
 	window.f2.text_name = add_entry(content, read_option("DEFAULT_USER"), "Default odroid user:")
 	window.f2.text_hostname = add_entry(content, read_option("HOSTS_NAME"), "Default odroid hostname:")
@@ -587,17 +850,26 @@ def add_content_advanced(window):
 	
 	window.f2.scripts_dir=add_entry(content,read_option("SCRIPTS_DIR"),"Scripts directory")
 	
-	add_checkbutton(content, "Upgrade nodes and master",window.f2.check1)
+	frame = ttk.Frame(content)
+	subframe1 = ttk.Frame(frame)
+	subframe2 = ttk.Frame(frame)
+	add_checkbutton(subframe1, "Upgrade cluster",window.f2.check1)
+	window.f2.upgrade_entry=add_entry(subframe2, window.f2.upgrade_time.get(),"Upgrade time: ")
+	subframe1.pack(side=LEFT)
+	subframe2.pack(side=RIGHT)
+	frame.pack(expand=True, fill=BOTH)
 	
 	add_radiobutton_group(content,"Private IP:",window.f2.radio1, ["Class A", "Class B", "Class C"], ['A', 'B', 'C'], [lambda :set_ip_a(), lambda :set_ip_b(), lambda :set_ip_c()])
 	
 	add_private_ip(window,content)
 	
+	
+	
 	padding_bottom.pack(fill=BOTH, side=BOTTOM)
 	padding_left.pack(expand=True, side=LEFT)
 	content.pack(expand=True, fill=BOTH, side=LEFT)
 	padding_right.pack(expand=True, fill=BOTH, side=RIGHT)
-	padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
+	#padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
 	
 def installer_screen(window):
 	#Destruim la finestra
@@ -645,34 +917,42 @@ def write_options(window):
 		correct = check_ip(window.f2.dns2, "DNS2")
 	
 	if(correct):
-		write_option("DEFAULT_USER",window.f2.text_name.get("1.0",END))
-		write_option("DEFAULT_PASSWORD",window.f2.text_password2.get("1.0",END))
-		write_option("HOSTS_NAME",window.f2.text_hostname.get("1.0",END))
+		write_option("DEFAULT_USER",window.f2.text_name.get())
+		write_option("DEFAULT_PASSWORD",window.f2.text_password2.get())
+		write_option("HOSTS_NAME",window.f2.text_hostname.get())
 		write_option("EXTERNALDNS1",iplist_to_ipstring(window.f2.dns1))
 		write_option("EXTERNALDNS2",iplist_to_ipstring(window.f2.dns2))
-		write_option("SCRIPTS_DIR",window.f2.scripts_dir.get("1.0",END))
+		write_option("SCRIPTS_DIR",window.f2.scripts_dir.get())
 		write_option("UPGRADE",str(window.f2.check1.get()))
 		write_option("IP_CLASS",str(window.f2.radio1.get()))
 		write_option("SYS_TIMEZONE",str(window.f1.timezone.get()))
 		write_option("SYS_LANGUAGE",str(icu[get_pos_list(window.f1.locale.get(),languages)]))
+		write_option("MASK", str(cidr_to_mask(mask.get())))
+		write_option("IP", str(ip.ip_num1.get()) + "." + str(ip.ip_num2.get()) + "." + str(ip.ip_num3.get()) + "." + str(ip.ip_num4.get()))
+		write_option("LAYOUT", layouts[layout.get()].get_code())
+		write_option("UPGRADE_SLEEP", str(window.f2.upgrade_entry.get()))
+		for i in layouts[layout.get()].get_variants():
+			if(variant.get() == i.get_name()):
+				write_option("VARIANT", i.get_code())
 	return correct
 	
 def start_installation(window):
 	correct=write_options(window)
-	if(correct):
-		password=ask_password(window)
+	#if(correct):
+		#password=ask_password(window)
 
 # Creem la finestra principal
 root = Tk()
 
 get_timezones()
 get_languages()
+get_layouts()
 
 # Carrega la finestra de benvinguda
 load_screen(root)
 # Al cap de 1,5 segons carreguem el l'instalador
 root.after(1500, lambda: installer_screen(root))
-	
+
 root.mainloop() 
 
 

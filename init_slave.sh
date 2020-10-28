@@ -59,8 +59,73 @@ WantedBy=multi-user.target" > /etc/systemd/system/slurm_watcher.path
 	systemctl enable --now slurm_watcher.{path,service}
 }
 
-if [ $# -ne 3 ]; then
-	echo "Error, you must enter 3 parameters, the first corresponding to the IP or host name 
+set_language() {
+        
+		locale="$1"
+
+        if [ -z "$locale" ]; then
+                echo "You need to enter a language in odroid_cluster.conf"
+                exit 1
+        fi
+
+        if [ $(cat /usr/share/i18n/SUPPORTED | grep ^"$locale".UTF-8 | wc -l) -eq 0 ]; then
+                echo "Incorrect language"
+                exit 1
+        fi
+
+        if [ $(grep "source /etc/default/locale" /etc/profile | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /etc/profile
+        fi
+
+        if [ $(grep "source /etc/default/locale" /etc/bash.bashrc | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /etc/bash.bashrc
+        fi
+
+        # Instal.lem el nou idioma
+        locale-gen "$locale".utf8
+
+        # Seleccionem el nou idioma
+        #update-locale LANG="$locale".UTF-8 LANGUAGE
+        localectl set-locale LANG="$locale".UTF-8 LANGUAGE="$locale".UTF-8:"$(echo $locale | cut -d_ -f1)"
+
+        # Actualitza les varaibles LANG i LANGUAGE
+        source /etc/default/locale
+
+        su $master_name -c 'source /etc/default/locale'
+
+        # Instal.lem dependencies del nou idioma per tal de traduir-ho tot.
+        apt-get install $(check-language-support -l "$locale") -y
+}
+
+set_layout() {
+	
+	layout="$1"
+	variant="$2"
+		
+    if [ $# -ne 2 ]; then
+            echo -e "It is necessary to pass 2 arguments, the first corresponding to the \nlayout and the second to the variant"
+            exit 1
+    fi
+	
+	if [ "$layout" == "$variant" ]; then
+		variant="basic"
+	fi
+
+	setxkbmap -layout $layout -variant $variant
+
+	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 0 ]; then
+            sed -i '/^setxkbmap/d' /etc/profile
+            echo "setxkbmap -layout $layout -variant $variant" >> /etc/profile
+    fi
+
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 0 ]; then
+             sed -i '/^setxkbmap/d' /etc/bash.bashrc
+            echo "setxkbmap -layout $layout -variant $variant" >> /etc/bash.bashrc
+    fi
+}
+
+if [ $# -ne 4 ]; then
+	echo "Error, you must enter 5 parameters, the first corresponding to the IP or host name 
 of the master, the second an integer value between 1 and 0 to indicate whether the slave is 
 updated or not and the third an integer value corresponding to the waiting time in minutes
 between the upgrade of one node and the next."
@@ -74,6 +139,12 @@ fi
 master_ip="$1" # $1 ip del master a la lan odroid
 upgrade="$2"
 sleep_time="$3"
+locale="$4"
+
+language=$(echo "$locale" | cut -d';' -f 1)
+layout=$(echo "$locale" | cut -d';' -f 2)
+variant=$(echo "$locale" | cut -d';' -f 3)
+timezone=$(echo "$locale" | cut -d';' -f 4)
 
 # Deshabilitem Unattended-Upgrade
 sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
@@ -109,8 +180,12 @@ hostnamectl set-hostname --static \$new_host_name" > /etc/dhcp/dhclient-exit-hoo
 chmod a+r /etc/dhcp/dhclient-exit-hooks.d/hostname
 dhclient -v
 
+# Modifiquem l'idioma i el layout del teclat
+set_language "$language"
+set_layout "$layout" "$variant"
+
 # Fiquem a zona horaria i actualitzem l'hora
-timedatectl set-timezone Europe/Madrid
+timedatectl set-timezone "$timezone"
 apt install chrony -y
 systemctl enable --now chronyd
 
@@ -121,7 +196,7 @@ apt-key adv -v --keyserver keyserver.ubuntu.com --recv-keys 5360FB9DAB19BAC9
 apt-get update -y
 
 # Instal.lem sysstat per a al software de monitorització de Joan Jara
-apt-get install sysstat
+apt-get install sysstat -y
 
 # Desactivem autentificació mitjançant usuari root
 #sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config

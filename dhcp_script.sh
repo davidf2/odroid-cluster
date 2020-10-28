@@ -8,7 +8,7 @@ source network_lib.sh
 
 LOG_FILE=/var/log/dnsmasq.log
 HOSTS_FILE=/etc/dnsmasq.d/dnsmasq_hosts.conf
-name=$(cat /etc/odroid_cluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
+host_name=$(cat /etc/odroid_cluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
 
 option=$1
 mac=$2
@@ -50,22 +50,22 @@ add_odroid() {
 		# Assignem una ip i hostname fix a la nova MAC
 		# (Aquests canvis nomes es produeixen al reiniciar dnsmasq)
 		if [[ "$num_line" -gt $(cat $HOSTS_FILE | wc -l) ]]; then
-			echo "dhcp-host=$mac,$name$num_line,$ip" >> $HOSTS_FILE
+			echo "dhcp-host=$mac,$host_name$num_line,$ip" >> $HOSTS_FILE
 		else
-			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$name"''"$num_line"','"$ip"'' $HOSTS_FILE
+			sed -i ''"$num_line"'i\dhcp-host='"$mac"','"$host_name"''"$num_line"','"$ip"'' $HOSTS_FILE
 		fi
 
 		# Modifiquem el nombre de odroids al fitxer slurm.conf
-		sed -i 's/'"$name"'\[1\-[0-9]*\]/'"$name"'\[1\-'"$num_line"'\]/g' /etc/slurm-llnl/slurm.conf
+		sed -i 's/'"$host_name"'\[1\-[0-9]*\]/'"$host_name"'\[1\-'"$num_line"'\]/g' /etc/slurm-llnl/slurm.conf
 		# Fem un restart del dimoni slurmctld
 		systemctl restart slurmctld
 
 		# Assignem un hostname a una ip de forma temporal.
 		# (Aquests canvis es realitzen automaticament)
-		echo "${ip} ${name}${num_line}" >> /etc/hosts.d/tmp_hosts
+		echo "${ip} ${host_name}${num_line}" >> /etc/hosts.d/tmp_hosts
 
 		# Afegim el nou slave i l'inicialitzem
-		nohup "${scripts_path}/add_slave.sh" "${name}${num_line}" "$name" "$(get_sleep_time)" >> /tmp/add_slave_"${name}${num_line}".out 2>&1 &
+		nohup "${scripts_path}/add_slave.sh" "${host_name}${num_line}"  "$(get_sleep_time)" >> /var/log/odroid_cluster/add_slave_"${host_name}${num_line}".out 2>&1 &
 
     fi
 }

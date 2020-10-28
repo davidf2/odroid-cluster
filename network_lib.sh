@@ -203,24 +203,77 @@ calculate_network_ip() {
 	result=$(check_mask "$mask")
 
 	if [[ $result == "true" ]]; then
-		IFS=':' read -a mask_array <<< "$mask"
-		IFS='.' read -a ip_array <<< "$ip"
+		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
+		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
+		result=$(echo "$((i1 & m1)).$((i2 & m2)).$((i3 & m3)).$((i4 & m4))")
+	else
+		exit 1
+	fi
 
-		if [ ${#mask_array[@]} -ne 4 ] && [ ${#ip_array[@]} -ne 4 ]; then
-			echo "Error, the IP or mask entered by parameter must contain 4 octets each"
-			exit 1
-		fi
-		result=""
-		i=0
-		for octet in "${ip_array[@]}"; do
-			result="$result$(($octet & mask_array[$i]))"
-			i=$(($i + 1))
-			if [ $i -lt ${#mask_array[@]} ]; then
-				result=$result"."
-			fi
-			
-		done
+	echo $result
+}
 
+calculate_first_ip() {
+	
+	if [ $# -lt 2 ]; then
+		echo "Error, you must enter 2 parameters, the first one corresponding to 
+		an IP and the second one to the mask"
+		exit 1
+	fi
+	ip="$1"
+	mask="$2"
+
+	if [[ $(echo $ip | grep [^0-9.]) ]]; then
+		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
+		return 1
+	fi
+
+	if [[ $(echo $1ip| awk -F'.' '{print NF}') -ne 4 ]]; then
+		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
+		return 1
+	fi
+
+
+	result=$(check_mask "$mask")
+
+	if [[ $result == "true" ]]; then
+		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
+		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
+		result=$(echo "$((i1 & m1)).$((i2 & m2)).$((i3 & m3)).$(((i4 & m4)+1))")
+	else
+		exit 1
+	fi
+
+	echo $result
+}
+
+calculate_last_ip() {
+	
+	if [ $# -lt 2 ]; then
+		echo "Error, you must enter 2 parameters, the first one corresponding to 
+		an IP and the second one to the mask"
+		exit 1
+	fi
+	ip="$1"
+	mask="$2"
+
+	if [[ $(echo $ip | grep [^0-9.]) ]]; then
+		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
+		return 1
+	fi
+
+	if [[ $(echo $1ip| awk -F'.' '{print NF}') -ne 4 ]]; then
+		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
+		return 1
+	fi
+
+
+	result=$(check_mask "$mask")
+
+	if [[ $result == "true" ]]; then
+		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
+		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
+		result=$(echo "$((i1 & m1 | 255-m1)).$((i2 & m2 | 255-m2)).$((i3 & m3 | 255-m3)).$(((i4 & m4 | 255-m4)-1))")
 	else
 		exit 1
 	fi
