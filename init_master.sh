@@ -12,9 +12,10 @@ sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgra
 cp -p odroid_cluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/
 
-# Carreguem el script network_lib.sh com a una llibreria, per 
+# Carreguem els scripts network_lib.sh i locale.sh com a llibreries, per 
 #	poder fer servir les seves funcions
 source network_lib.sh
+source ./locale.sh
 
 scripts_path="$(cat /etc/odroid_cluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
 externaldns1="$(cat /etc/odroid_cluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
@@ -74,71 +75,6 @@ change_password() {
 	echo -e "${pass}\n${pass}" | passwd $master_name &> /dev/null
 	unset pass
 	unset pass2
-}
-
-set_language() {
-        
-		locale="$1"
-
-        if [ -z "$locale" ]; then
-                echo "You need to enter a language in odroid_cluster.conf"
-                exit 1
-        fi
-
-        if [ $(cat /usr/share/i18n/SUPPORTED | grep ^"$locale".UTF-8 | wc -l) -eq 0 ]; then
-                echo "Incorrect language"
-                exit 1
-        fi
-
-        if [ $(grep "source /etc/default/locale" /etc/profile | wc -l) -eq 0 ]; then
-                echo "source /etc/default/locale" >> /etc/profile
-        fi
-
-        if [ $(grep "source /etc/default/locale" /etc/bash.bashrc | wc -l) -eq 0 ]; then
-                echo "source /etc/default/locale" >> /etc/bash.bashrc
-        fi
-
-        # Instal.lem el nou idioma
-        locale-gen "$locale".utf8
-
-        # Seleccionem el nou idioma
-        #update-locale LANG="$locale".UTF-8 LANGUAGE
-        localectl set-locale LANG="$locale".UTF-8 LANGUAGE="$locale".UTF-8:"$(echo $locale | cut -d_ -f1)"
-
-        # Actualitza les varaibles LANG i LANGUAGE
-        source /etc/default/locale
-
-        su $master_name -c 'source /etc/default/locale'
-
-        # Instal.lem dependencies del nou idioma per tal de traduir-ho tot.
-        apt-get install $(check-language-support -l "$locale") -y
-}
-
-set_layout() {
-	
-	layout="$1"
-	variant="$2"
-		
-    if [ $# -ne 2 ]; then
-            echo -e "It is necessary to pass 2 arguments, the first corresponding to the \nlayout and the second to the variant"
-            exit 1
-    fi
-	
-	if [ "$layout" == "$variant" ]; then
-		variant="basic"
-	fi
-
-	setxkbmap -layout $layout -variant $variant
-
-	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 0 ]; then
-            sed -i '/^setxkbmap/d' /etc/profile
-            echo "setxkbmap -layout $layout -variant $variant" >> /etc/profile
-    fi
-
-    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 0 ]; then
-             sed -i '/^setxkbmap/d' /etc/bash.bashrc
-            echo "setxkbmap -layout $layout -variant $variant" >> /etc/bash.bashrc
-    fi
 }
 
 add_ssh() {
@@ -329,8 +265,6 @@ add_monitoring() {
 	./start-monitoring.sh
 }
 
-# Obliguem a l'usuari a canviar la contrasenya del master
-change_password
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d "$scripts_path" ]; then
@@ -342,6 +276,7 @@ cp -p dhcp_script.sh "$scripts_path"/
 # Copiem els scripts dependents
 cp -p init_slave.sh "$scripts_path"/
 cp -p add_slave.sh "$scripts_path"/
+cp -p locale.sh "$scripts_path"/
 
 # Creem el directori on guardarem alguns logs
 mkdir /var/log/odroid_cluster
@@ -356,11 +291,11 @@ apt-get update -y
 # Modifiquem el hostname a master
 hostnamectl set-hostname master
 
-# Modifiquem l'idioma
-set_language "$locale"
-
 # Modifiquem el teclat
 set_layout "$layout" "$variant"
+
+# Obliguem a l'usuari a canviar la contrasenya del master
+change_password
 
 #Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone "$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)"
@@ -417,6 +352,9 @@ add_dnsmasq "${net_array[0]}" "${net_array[3]}" "${net_array[1]}"
 
 # Instal.lem el software de monitoreig fet per Joan Jara Bosch
 add_monitoring
+
+# Modifiquem l'idioma
+set_language "$locale"
 
 if [ "$upgrade" -eq 1 ]; then
 	apt-get upgrade -y

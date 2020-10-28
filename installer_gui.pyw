@@ -4,8 +4,18 @@
 import subprocess
 from pathlib import Path
 import time
+import os
 
-p=subprocess.call("sudo "+str(Path.cwd())+"/gui_dependencies.sh", shell=True)
+uid=os.getuid()
+
+ret=subprocess.run(str(Path.cwd())+"/check_gui_dependencies.sh", shell=True).returncode
+
+if(int(ret) == 1):
+	if(uid == 0):
+		subprocess.call(str(Path.cwd())+"/gui_dependencies.sh", shell=True)
+	else:
+		subprocess.call("sudo -k "+str(Path.cwd())+"/gui_dependencies.sh", shell=True)
+
 
 from tkinter import ttk
 from tkinter import *  
@@ -17,8 +27,12 @@ import tkinter.font as tkFont
 import re
 from icu import Locale
 
-font = TTFont('optima-roman.ttf')
-font.save(str(Path.home())+"/.local/share/fonts/optima-roman.ttf")
+if(uid > 0):
+	font = TTFont('optima-roman.ttf')
+	font.save(str(Path.home())+"/.local/share/fonts/optima-roman.ttf")
+else:
+	font = TTFont('optima-roman.ttf')
+	font.save("/usr/share/fonts/optima-roman.ttf")
 
 OPTIONS_FILE="odroid_cluster.conf"
 
@@ -902,14 +916,25 @@ def write_options(window):
 	
 	correct=True
 	
-	#try:
-	#	int(window.f1.text_num_nodes.get("1.0",END))
-	#except ValueError:
-	#	messagebox.showerror(message='The number of nodes must be a digit.', title="Maximum number of nodes")
-	#	correct=False
-	#if(int(window.f1.text_num_nodes.get("1.0",END)) < 1):
-	#	messagebox.showerror(message='At least there must be one node.', title="Maximum number of nodes")
-	#	correct=False
+	try:
+		int(window.f2.upgrade_entry.get())
+	except ValueError:
+		messagebox.showerror(message='The upgrade time must be a digit.', title="Upgrade time")
+		correct=False
+	
+	if(int(window.f2.upgrade_entry.get()) < 0):
+		messagebox.showerror(message='The upgrade time cannot be negative.', title="Upgrade time")
+		correct=False
+	
+	try:
+		p=Path(window.f2.scripts_dir.get())
+	except(SyntaxError, TypeError):
+		messagebox.showerror(message='The scripts directory is invalid.', title="Scripts dir")
+		correct=False
+	
+	if(window.f2.scripts_dir.get()[0] != "/"):
+		messagebox.showerror(message='Enter an absolute path for the scripts directory.', title="Scripts dir")
+		correct=False
 	
 	if(correct):
 		correct = check_ip(window.f2.dns1, "DNS1")

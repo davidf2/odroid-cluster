@@ -45,6 +45,9 @@ su $user_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
 # Copiem la clau publica al slave
 su $user_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $user_name@$host"
 
+# Copiem el script locale.sh dependencia de init_slave.sh
+su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/locale.sh ${user_name}@${host}:Documents"
+
 # Copiem el script de inicialització al slave
 su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${user_name}@${host}:Documents"
 
@@ -53,6 +56,6 @@ interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $user_name -c "sshpass -p ${default_password} ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /tmp/init_slave_${host}.out 2>&1"
+su $user_name -c "sshpass -p ${default_password} ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
 
 
