@@ -1,7 +1,7 @@
 #!/bin/bash
 
-scripts_path="$(cat /etc/odroid_cluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
-upgrade_slave="$(cat /etc/odroid_cluster.conf | grep "UPGRADE" | cut -d= -f2)"
+scripts_path="$(cat /etc/odroid_cluster.conf | grep "^SCRIPTS_DIR=" | cut -d= -f2)"
+upgrade_slave="$(cat /etc/odroid_cluster.conf | grep "^UPGRADE=" | cut -d= -f2)"
 
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
@@ -11,17 +11,17 @@ source network_lib.sh
 export HISTIGNORE=$HISTIGNORE':*sudo -S*:*sshpass*'
 
 
-default_password=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_PASSWORD" | cut -d= -f2)
+default_password=$(cat /etc/odroid_cluster.conf | grep "^DEFAULT_PASSWORD=" | cut -d= -f2)
 # Agafem el nom de l'usuari no root
-user_name=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
+user_name=$(cat /etc/odroid_cluster.conf | grep "^DEFAULT_USER=" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 user_home=$(eval echo "~$user_name")
-upgrade_time=$(cat /etc/odroid_cluster.conf | grep "UPGRADE_SLEEP" | cut -d= -f2)
+upgrade_time=$(cat /etc/odroid_cluster.conf | grep "^UPGRADE_SLEEP=" | cut -d= -f2)
 
-language=$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)
-layout=$(cat /etc/odroid_cluster.conf | grep "LAYOUT" | cut -d= -f2)
-variant=$(cat /etc/odroid_cluster.conf | grep "VARIANT" | cut -d= -f2)
-timezone=$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)
+language=$(cat /etc/odroid_cluster.conf | grep "^SYS_LANGUAGE=" | cut -d= -f2)
+layout=$(cat /etc/odroid_cluster.conf | grep "^LAYOUT=" | cut -d= -f2)
+variant=$(cat /etc/odroid_cluster.conf | grep "^VARIANT=" | cut -d= -f2)
+timezone=$(cat /etc/odroid_cluster.conf | grep "^SYS_TIMEZONE=" | cut -d= -f2)
 
 locale="$language;$layout;$variant;$timezone"
 

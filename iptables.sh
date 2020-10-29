@@ -1,10 +1,15 @@
 #!/bin/bash
 
+if [ $# -ne 2 ]; then
+	echo "Error, you have to enter 2 parameters."
+	exit 1
+fi
+
 cluster_lan="$1"
 internet="$2"
 
-externaldns1="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
-externaldns2="$(cat /etc/urvcluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
+externaldns1="$(cat /etc/urvcluster.conf | grep "^EXTERNALDNS1=" | cut -d= -f2)"
+externaldns2="$(cat /etc/urvcluster.conf | grep "^EXTERNALDNS2=" | cut -d= -f2)"
 
 # Esborrem les regles anteriors
 iptables -F

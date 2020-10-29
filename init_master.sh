@@ -17,42 +17,23 @@ cp -p network_lib.sh /usr/local/sbin/
 source network_lib.sh
 source ./locale.sh
 
-scripts_path="$(cat /etc/odroid_cluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
-externaldns1="$(cat /etc/odroid_cluster.conf | grep "EXTERNALDNS1" | cut -d= -f2)"
-externaldns2="$(cat /etc/odroid_cluster.conf | grep "EXTERNALDNS2" | cut -d= -f2)"
-upgrade="$(cat /etc/odroid_cluster.conf | grep "UPGRADE" | cut -d= -f2)"
+scripts_path="$(cat /etc/odroid_cluster.conf | grep "^SCRIPTS_DIR=" | cut -d= -f2)"
+externaldns1="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS1=" | cut -d= -f2)"
+externaldns2="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS2=" | cut -d= -f2)"
+upgrade="$(cat /etc/odroid_cluster.conf | grep "^UPGRADE=" | cut -d= -f2)"
 # Agafem el nom de l'usuari no root
-master_name=$(cat /etc/odroid_cluster.conf | grep "DEFAULT_USER" | cut -d= -f2)
+master_name=$(cat /etc/odroid_cluster.conf | grep "^DEFAULT_USER=" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
 KEY_FILE="${master_home}/.ssh/id_rsa"
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
-locale="$(cat /etc/odroid_cluster.conf | grep "SYS_LANGUAGE" | cut -d= -f2)"
-layout="$(cat /etc/odroid_cluster.conf | grep "LAYOUT" | cut -d= -f2)"
-variant="$(cat /etc/odroid_cluster.conf | grep "VARIANT" | cut -d= -f2)"
-
-add_user() {
-	password="$1"
-	
-	# Comprova si existeix l'usuari per defecte
-	if [ ! $(id -u "$1" 2>/dev/null) ]; then
-		# Encripta la contrasenya
-		enc_pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
-		# Afegeix el usuari per defecte
-		useradd "$master_name" -m -p "$enc_pass" -s "/bin/bash"
-		# Crea els directoris per defecte al seu home directory
-		runuser -l "$master_name" -c '/usr/bin/xdg-user-dirs-update'
-		# Afegeix l'usuari com a sudoer
-		usermod -aG sudo "$master_name"
-	fi
-}
+locale="$(cat /etc/odroid_cluster.conf | grep "^SYS_LANGUAGE=" | cut -d= -f2)"
+layout="$(cat /etc/odroid_cluster.conf | grep "^LAYOUT=" | cut -d= -f2)"
+variant="$(cat /etc/odroid_cluster.conf | grep "^VARIANT=" | cut -d= -f2)"
 
 
 change_password() {
-	export HISTIGNORE=$HISTIGNORE':*passwd*'
-
-	#if [ $(([ "$DISPLAY" ] || [ "$WAYLAND_DISPLAY" ] || [ "$MIR_SOCKET" ] && echo 1) || echo 0) -eq 0 ]; then
 	pass="0"
 	pass2="1"
 
@@ -61,20 +42,16 @@ change_password() {
 		echo "Enter the new password for the master node:"
 		stty -echo
 		read -r pass
-		stty echo
+		stty sane
 		echo "Re-enter the new password:"
 		stty -echo
 		read -r pass2
-		stty echo
+		stty sane
 	done
 
-	# Afegim l'usuari per defecte si no existeix
-	add_user "$pass"
 	# Modifica la contrasenya de l'usuari root i el per defecte
 	echo -e "${pass}\n${pass}" | passwd &> /dev/null
 	echo -e "${pass}\n${pass}" | passwd $master_name &> /dev/null
-	unset pass
-	unset pass2
 }
 
 add_ssh() {
@@ -292,13 +269,13 @@ apt-get update -y
 hostnamectl set-hostname master
 
 # Modifiquem el teclat
-set_layout "$layout" "$variant"
+#set_layout "$layout" "$variant"
 
 # Obliguem a l'usuari a canviar la contrasenya del master
 change_password
 
 #Fiquem a zona horaria i actualitzem l'hora
-timedatectl set-timezone "$(cat /etc/odroid_cluster.conf | grep "SYS_TIMEZONE" | cut -d= -f2)"
+timedatectl set-timezone "$(cat /etc/odroid_cluster.conf | grep "^SYS_TIMEZONE=" | cut -d= -f2)"
 apt-get install chrony -y
 systemctl enable --now chronyd
 

@@ -120,10 +120,6 @@ hostnamectl set-hostname --static \$new_host_name" > /etc/dhcp/dhclient-exit-hoo
 chmod a+r /etc/dhcp/dhclient-exit-hooks.d/hostname
 dhclient -v
 
-# Modifiquem l'idioma i el layout del teclat
-set_language "$language"
-set_layout "$layout" "$variant"
-
 # Fiquem a zona horaria i actualitzem l'hora
 timedatectl set-timezone "$timezone"
 apt install chrony -y
@@ -170,6 +166,10 @@ add_slurm "${master_ip}"
 apt-get install mpich -y
 
 echo "I am $(hostname) I have already installed and configured everything." >> ~/.slave_responses
+
+# Modifiquem l'idioma i el layout del teclat
+set_language "$language"
+#set_layout "$layout" "$variant"
 
 if [ $upgrade -eq 1 ]; then
 	sleep "$sleep_time"m && apt-get upgrade -y &> /var/log/upgrade_$(hostname).log 

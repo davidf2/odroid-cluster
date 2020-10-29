@@ -1,6 +1,6 @@
 #! /bin/bash
 
-scripts_path="$(cat /etc/odroid_cluster.conf | grep "SCRIPTS_DIR" | cut -d= -f2)"
+scripts_path="$(cat /etc/odroid_cluster.conf | grep "^SCRIPTS_DIR=" | cut -d= -f2)"
 
 # Carreguem el script network_lib.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
@@ -8,7 +8,7 @@ source network_lib.sh
 
 LOG_FILE=/var/log/dnsmasq.log
 HOSTS_FILE=/etc/dnsmasq.d/dnsmasq_hosts.conf
-host_name=$(cat /etc/odroid_cluster.conf | grep "HOSTS_NAME" | cut -d= -f2)
+host_name=$(cat /etc/odroid_cluster.conf | grep "^HOSTS_NAME=" | cut -d= -f2)
 
 option=$1
 mac=$2
@@ -20,7 +20,7 @@ get_time(){
 
 # Funció per calcular els temps de sleep entre upgrade i upgrade
 get_sleep_time() {
-        upgrade_time=$(cat /etc/odroid_cluster.conf | grep "UPGRADE_SLEEP" | cut -d= -f2)
+        upgrade_time=$(cat /etc/odroid_cluster.conf | grep "^UPGRADE_SLEEP=" | cut -d= -f2)
         act_time=$(get_time)
 
 
