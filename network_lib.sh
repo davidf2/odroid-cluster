@@ -194,7 +194,7 @@ calculate_network_ip() {
 		return 1
 	fi
 
-	if [[ $(echo $1ip| awk -F'.' '{print NF}') -ne 4 ]]; then
+	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
 		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
 		return 1
 	fi
@@ -228,7 +228,7 @@ calculate_first_ip() {
 		return 1
 	fi
 
-	if [[ $(echo $1ip| awk -F'.' '{print NF}') -ne 4 ]]; then
+	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
 		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
 		return 1
 	fi
@@ -262,7 +262,7 @@ calculate_last_ip() {
 		return 1
 	fi
 
-	if [[ $(echo $1ip| awk -F'.' '{print NF}') -ne 4 ]]; then
+	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
 		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
 		return 1
 	fi

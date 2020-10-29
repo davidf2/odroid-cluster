@@ -91,9 +91,8 @@ sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 # Carrega els canvis sense reiniciar
 sysctl -p
 
-# Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
-iptables -t nat -A POSTROUTING -o $net_interface -j MASQUERADE
-sleep 1
+# Configurem les iptables
+./iptables.sh "$lan_interface" "$net_interface"
 
 # Guardem els canvis a iptables de forma permanentment
 iptables-save > /etc/iptables/rules.v4
