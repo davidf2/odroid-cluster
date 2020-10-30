@@ -42,7 +42,9 @@ set_layout() {
 	
 	layout="$1"
 	variant="$2"
-		
+	
+    apt install xrdp -y
+
     if [ $# -ne 2 ]; then
             echo -e "It is necessary to pass 2 arguments, the first corresponding to the \nlayout and the second to the variant"
             exit 1
@@ -52,15 +54,27 @@ set_layout() {
 		variant="basic"
 	fi
 
-	setxkbmap -layout $layout -variant $variant
-
-	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 0 ]; then
-            sed -i '/^setxkbmap/d' /etc/profile
-            echo "setxkbmap -layout $layout -variant $variant" >> /etc/profile
+    if [ $(([ "$DISPLAY" ] || [ "$WAYLAND_DISPLAY" ] || [ "$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
+        if [ $(echo "$DISPLAY") = ":0" ]; then
+            setxkbmap -layout $layout -variant $variant
+        fi
     fi
 
-    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 0 ]; then
+	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 1 ]; then
+            sed -i '/^setxkbmap/d' /etc/profile
+            echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
+        if [ \$(echo "\$DISPLAY") = ":0" ]; then
+            setxkbmap -layout $layout -variant $variant
+        fi
+    fi" >> /etc/profile
+    fi
+
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 1 ]; then
              sed -i '/^setxkbmap/d' /etc/bash.bashrc
-            echo "setxkbmap -layout $layout -variant $variant" >> /etc/bash.bashrc
+            echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
+        if [ \$(echo "\$DISPLAY") = ":0" ]; then
+            setxkbmap -layout $layout -variant $variant
+        fi
+    fi" >> /etc/bash.bashrc
     fi
 }

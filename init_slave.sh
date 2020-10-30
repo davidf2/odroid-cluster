@@ -137,8 +137,8 @@ apt-get update -y
 apt-get install sysstat -y
 
 # Desactivem autentificació mitjançant usuari root
-#sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config
-#systemctl restart sshd
+sed -i 's/PermitRootLogin yes.*/PermitRootLogin no/' /etc/ssh/sshd_config
+systemctl restart sshd
 
 #  Esborrem software innecessari
 apt-get remove --purge libreoffice* thunderbird pacman transmission* -y
@@ -171,7 +171,7 @@ echo "I am $(hostname) I have already installed and configured everything." >> ~
 
 # Modifiquem l'idioma i el layout del teclat
 set_language "$language"
-#set_layout "$layout" "$variant"
+set_layout "$layout" "$variant"
 
 if [ $upgrade -eq 1 ]; then
 	sleep "$sleep_time"m && apt-get upgrade -y &> /var/log/upgrade_$(hostname).log 

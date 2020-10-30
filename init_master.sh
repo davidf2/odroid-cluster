@@ -288,7 +288,7 @@ apt-get update -y
 hostnamectl set-hostname master
 
 # Modifiquem el teclat
-#set_layout "$layout" "$variant"
+set_layout "$layout" "$variant"
 
 apt install expect -y
 # Obliguem a l'usuari a canviar la contrasenya del master
