@@ -8,7 +8,7 @@ source network_lib.sh
 # Default values
 ip=$(cat /etc/odroid_cluster.conf | grep "^IP=" | cut -d= -f2)
 mask=$(cat /etc/odroid_cluster.conf | grep "^MASK=" | cut -d= -f2)
-class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS= | cut -d= -f2)
+class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS=" | cut -d= -f2)
 
 while getopts ":i:m:n:" opt; do
   case ${opt} in

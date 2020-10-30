@@ -8,6 +8,7 @@ fi
 
 # Deshabilitem Unattended-Upgrade
 sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
+apt remove unattended-upgrades -y
 
 cp -p odroid_cluster.conf /etc
 cp -p network_lib.sh /usr/local/sbin/
