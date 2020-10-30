@@ -54,6 +54,8 @@ change_password() {
 	# Modifica la contrasenya de l'usuari root i el per defecte
 	echo -e "${pass}\n${pass}" | passwd &> /dev/null
 	echo -e "${pass}\n${pass}" | passwd $master_name &> /dev/null
+	# Modifiquem el password de vnc
+	./set_vnc_password.sh "$pass"
 }
 
 add_ssh() {
@@ -244,6 +246,21 @@ add_monitoring() {
 	./start-monitoring.sh
 }
 
+add_iptables() {
+	net_interface="$1"
+	lan_interface="$2"
+
+	systemctl restart netfilter-persistent
+	systemctl enable netfilter-persistent
+
+	# Configurem les iptables
+	./iptables.sh "$lan_interface" "$net_interface"
+	sleep 2
+	# Guardem els canvis a iptables de forma permanentment
+	iptables-save > /etc/iptables/rules.v4
+	iptables-save > /etc/iptables/rules.v6
+}
+
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d "$scripts_path" ]; then
@@ -273,6 +290,7 @@ hostnamectl set-hostname master
 # Modifiquem el teclat
 #set_layout "$layout" "$variant"
 
+apt install expect -y
 # Obliguem a l'usuari a canviar la contrasenya del master
 change_password
 
@@ -334,6 +352,8 @@ add_monitoring
 
 # Modifiquem l'idioma
 set_language "$locale"
+
+add_iptables "${net_array[2]}" "${net_array[3]}"
 
 if [ "$upgrade" -eq 1 ]; then
 	apt-get upgrade -y

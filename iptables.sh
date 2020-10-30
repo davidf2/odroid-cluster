@@ -8,8 +8,8 @@ fi
 cluster_lan="$1"
 internet="$2"
 
-externaldns1="$(cat /etc/urvcluster.conf | grep "^EXTERNALDNS1=" | cut -d= -f2)"
-externaldns2="$(cat /etc/urvcluster.conf | grep "^EXTERNALDNS2=" | cut -d= -f2)"
+externaldns1="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS1=" | cut -d= -f2)"
+externaldns2="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS2=" | cut -d= -f2)"
 
 # Esborrem les regles anteriors
 iptables -F

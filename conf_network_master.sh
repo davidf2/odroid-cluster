@@ -67,9 +67,7 @@ echo "
 auto $lan_interface
 iface $lan_interface inet static
     address $ip
-    netmask ${mask//:/.}
-auto $net_interface
-iface $net_interface inet dhcp" > /etc/network/interfaces
+    netmask ${mask//:/.}" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
 
@@ -90,16 +88,6 @@ ifup --force $lan_interface
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 # Carrega els canvis sense reiniciar
 sysctl -p
-
-# Configurem les iptables
-./iptables.sh "$lan_interface" "$net_interface"
-sleep 1
-# Guardem els canvis a iptables de forma permanentment
-iptables-save > /etc/iptables/rules.v4
-iptables-save > /etc/iptables/rules.v6
-
-systemctl restart netfilter-persistent
-systemctl enable netfilter-persistent
 
 # Retornem els resultats
 echo "$ip;$mask;$net_interface;$lan_interface"
