@@ -87,7 +87,8 @@ variant=$(echo "$locale" | cut -d';' -f 3)
 timezone=$(echo "$locale" | cut -d';' -f 4)
 
 # Deshabilitem Unattended-Upgrade
-sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
+systemctl disable unattended-upgrades
+systemctl stop unattended-upgrades
 apt remove unattended-upgrades -y
 
 nic=$(echo $(sed '1d;2d' /proc/net/dev | grep -v 'lo' | cut -d: -f1))

@@ -7,7 +7,8 @@ if [ "$EUID" -ne 0 ]
 fi
 
 # Deshabilitem Unattended-Upgrade
-sed -i 's/APT::Periodic::Unattended-Upgrade "1";/APT::Periodic::Unattended-Upgrade "0";/' /etc/apt/apt.conf.d/20auto-upgrades
+systemctl disable unattended-upgrades
+systemctl stop unattended-upgrades
 apt remove unattended-upgrades -y
 
 cp -p odroid_cluster.conf /etc
