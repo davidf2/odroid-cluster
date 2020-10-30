@@ -10,6 +10,7 @@ ip=$(cat /etc/odroid_cluster.conf | grep "^IP=" | cut -d= -f2)
 mask=$(cat /etc/odroid_cluster.conf | grep "^MASK=" | cut -d= -f2)
 class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS=" | cut -d= -f2)
 
+
 while getopts ":i:m:n:" opt; do
   case ${opt} in
     -i) result=$(check_ip "$OPTARG")
@@ -88,6 +89,20 @@ ifup --force $lan_interface
 sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 # Carrega els canvis sense reiniciar
 sysctl -p
+
+add_iptables "$net_interface" "$lan_interface"
+
+
+systemctl enable netfilter-persistent
+
+# Configurem les iptables
+./iptables.sh "$lan_interface" "$net_interface"
+sleep 1
+# Guardem els canvis a iptables de forma permanentment
+iptables-save > /etc/iptables/rules.v4
+iptables-save > /etc/iptables/rules.v6
+
+systemctl restart netfilter-persistent
 
 # Retornem els resultats
 echo "$ip;$mask;$net_interface;$lan_interface"

@@ -27,7 +27,8 @@ upgrade="$(cat /etc/odroid_cluster.conf | grep "^UPGRADE=" | cut -d= -f2)"
 master_name=$(cat /etc/odroid_cluster.conf | grep "^DEFAULT_USER=" | cut -d= -f2)
 # Agafem el directori home l'usuari no root
 master_home=$(eval echo "~$master_name")
-KEY_FILE="${master_home}/.ssh/id_rsa"
+PUB_KEY_FILE="${master_home}/.ssh/id_rsa.pub"
+KEY_FILE=$(echo $PUB_KEY_FILE | cut -d. -f1-2)
 KNOWN_HOSTS="${master_home}/.ssh/known_hosts"
 
 locale="$(cat /etc/odroid_cluster.conf | grep "^SYS_LANGUAGE=" | cut -d= -f2)"
@@ -74,7 +75,7 @@ add_ssh() {
 	#Ens autoafegim a knownhosts, per a quan estigui el servidor NFS /home
 	su $master_name -c "echo \"$(ssh-keyscan -H $(hostname))\" >> $KNOWN_HOSTS"
 	#Ens autoafegim la clau publica, per a quan estigui el servidor NFS /home
-	cat  $KEY_FILE.pub > "$master_home"/.ssh/authorized_keys
+	cat  "$PUB_KEY_FILE" > "$master_home"/.ssh/authorized_keys
 
 	# Si no existeix, fem una copia del fitxer de configuració
 	#	original del servidor ssh
@@ -246,21 +247,6 @@ add_monitoring() {
 	./start-monitoring.sh
 }
 
-add_iptables() {
-	net_interface="$1"
-	lan_interface="$2"
-
-	systemctl restart netfilter-persistent
-	systemctl enable netfilter-persistent
-
-	# Configurem les iptables
-	./iptables.sh "$lan_interface" "$net_interface"
-	sleep 2
-	# Guardem els canvis a iptables de forma permanentment
-	iptables-save > /etc/iptables/rules.v4
-	iptables-save > /etc/iptables/rules.v6
-}
-
 
 # Creem el directori principal, on emmagatzemarem els scripts necessaris
 if [ ! -d "$scripts_path" ]; then
@@ -273,6 +259,7 @@ cp -p dhcp_script.sh "$scripts_path"/
 cp -p init_slave.sh "$scripts_path"/
 cp -p add_slave.sh "$scripts_path"/
 cp -p locale.sh "$scripts_path"/
+cp -p iptables.sh "$scripts_path"/
 
 # Creem el directori on guardarem alguns logs
 mkdir /var/log/odroid_cluster
@@ -352,8 +339,6 @@ add_monitoring
 
 # Modifiquem l'idioma
 set_language "$locale"
-
-add_iptables "${net_array[2]}" "${net_array[3]}"
 
 if [ "$upgrade" -eq 1 ]; then
 	apt-get upgrade -y

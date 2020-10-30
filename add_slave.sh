@@ -22,7 +22,7 @@ language=$(cat /etc/odroid_cluster.conf | grep "^SYS_LANGUAGE=" | cut -d= -f2)
 layout=$(cat /etc/odroid_cluster.conf | grep "^LAYOUT=" | cut -d= -f2)
 variant=$(cat /etc/odroid_cluster.conf | grep "^VARIANT=" | cut -d= -f2)
 timezone=$(cat /etc/odroid_cluster.conf | grep "^SYS_TIMEZONE=" | cut -d= -f2)
-
+default_host=$(cat /etc/odroid_cluster.conf | grep "^HOSTS_NAME=" | cut -d= -f2)
 locale="$language;$layout;$variant;$timezone"
 
 KEY_FILE="${user_home}/.ssh/id_rsa.pub"
@@ -40,22 +40,22 @@ if [ $# -lt 1 ]; then
 fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
-su $user_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
+su $user_name -c "echo \"$(ssh-keyscan -H $default_host)\" >> $KNOWN_HOSTS"
 
 # Copiem la clau publica al slave
-su $user_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $user_name@$host"
+su $user_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $user_name@$default_host"
 
 # Copiem el script locale.sh dependencia de init_slave.sh
-su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/locale.sh ${user_name}@${host}:Documents"
+su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/locale.sh ${user_name}@${default_host}:Documents"
 
 # Copiem el script de inicialització al slave
-su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${user_name}@${host}:Documents"
+su $user_name -c "sshpass -p ${default_password} scp ${scripts_path}/init_slave.sh ${user_name}@${default_host}:Documents"
 
 # Agafem la IP de la xarxa interna
 interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $user_name -c "sshpass -p ${default_password} ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
+su $user_name -c "sshpass -p ${default_password} ssh -t ${user_name}@${default_host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
 
 
