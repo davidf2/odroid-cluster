@@ -11,45 +11,6 @@ mask=$(cat /etc/odroid_cluster.conf | grep "^MASK=" | cut -d= -f2)
 class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS=" | cut -d= -f2)
 
 
-while getopts ":i:m:n:" opt; do
-  case ${opt} in
-    -i) result=$(check_ip "$OPTARG")
-		if [[ $? -ne 0 ]]; then
-			exit 1
-		fi
-		case "$result" in
-			A) echo "Class A private IP";;
-			B) echo "Class B private IP";;
-			C) echo "Class C private IP";;
-			P) echo "ERROR: Cannot put a public IP" 1>&2
-				exit 1 ;;
-		esac
-		class=$result
-		ip=$OPTARG
-		shift
-		;;
-
-	-m)
-		result=$(check_mask "$OPTARG" "$class")
-		if [[ $? -ne 0 ]]; then
-			exit 1
-		fi
-		mask=$OPTARG
-		;;
-
-	-n)
-		lan_interface=$OPTARG
-		;;
-    \?)
-		echo "Invalid option: $OPTARG" 1>&2
-    	;;
-
-    :)
-		echo "Invalid option: $OPTARG requires an argument" 1>&2
-		;;
-  esac
-done
-
 line=$(cat /etc/hosts | grep 127.0.0.1)
 host=$(hostname)
 host2=$(echo $(who am i | awk '{print $1}'))

@@ -22,6 +22,14 @@ set_language() {
                 echo "source /etc/default/locale" >> /etc/bash.bashrc
         fi
 
+        if [ $(grep "source /etc/default/locale" /root/.profile | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /root/.profile
+        fi
+
+        if [ $(grep "source /etc/default/locale" /root/.bashrc | wc -l) -eq 0 ]; then
+                echo "source /etc/default/locale" >> /root/.bashrc
+        fi
+
         # Instal.lem el nou idioma
         locale-gen "$locale".utf8
 
@@ -60,7 +68,7 @@ set_layout() {
         fi
     fi
 
-	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 1 ]; then
+	if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/profile | wc -l) -eq 0 ]; then
             sed -i '/^setxkbmap/d' /etc/profile
             echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
         if [ \$(echo "\$DISPLAY") = ":0" ]; then
@@ -69,12 +77,29 @@ set_layout() {
     fi" >> /etc/profile
     fi
 
-    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 1 ]; then
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /etc/bash.bashrc | wc -l) -eq 0 ]; then
              sed -i '/^setxkbmap/d' /etc/bash.bashrc
             echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
         if [ \$(echo "\$DISPLAY") = ":0" ]; then
             setxkbmap -layout $layout -variant $variant
         fi
     fi" >> /etc/bash.bashrc
+    fi
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /root/.profile | wc -l) -eq 0 ]; then
+            sed -i '/^setxkbmap/d' /root/.profile
+            echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
+        if [ \$(echo "\$DISPLAY") = ":0" ]; then
+            setxkbmap -layout $layout -variant $variant
+        fi
+    fi" >> /root/.profile
+    fi
+
+    if [ $(grep "setxkbmap -layout $layout -variant $variant" /root/.bashrc | wc -l) -eq 0 ]; then
+             sed -i '/^setxkbmap/d' /root/.bashrc
+            echo "if [ \$(([ "\$DISPLAY" ] || [ "\$WAYLAND_DISPLAY" ] || [ "\$MIR_SOCKET" ] && echo 1) || echo 0) -eq 1 ]; then
+        if [ \$(echo "\$DISPLAY") = ":0" ]; then
+            setxkbmap -layout $layout -variant $variant
+        fi
+    fi" >> /root/.bashrc
     fi
 }

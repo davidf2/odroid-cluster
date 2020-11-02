@@ -4,8 +4,6 @@
 # Funció per controlar que una IP estigui en un format correcte
 check_ip() {
 
-	result="P" # IP publica
-
 	if [[ $(echo $1 | grep [^0-9.]) ]]; then
 		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
 		return 1
@@ -33,55 +31,57 @@ check_ip() {
 	case $(echo $1 | cut -d "." -f 1) in
 		10)
 			result="A" # IP privada de classe A
+			return 0
 		;;
 
 		172)
 			if [[ $(echo $1 | cut -d "." -f 2) -ge 16 ]] && [[ $(echo $1 | cut -d "." -f 2) -le 31 ]]; then
-				result="B" # IP privada de classe B
+				return 0
 			fi
 		;;
 
 		192)
 			if [[ $(echo $1 | cut -d "." -f 2) -eq 168 ]]; then
-				result="C" # IP privada de classe C
+				return 0
 			fi
 		;;
 
 	esac
 	
-	echo $result
+	return 1
 }
 
 # Funció per controlar que la mascara de xarxa sigui correcta
 check_mask() {
 
-	result="true"
+	mask=$1
+	class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS=" | cut -d= -f2)
 
-	if [[ $(echo $1 | grep [^0-9:]) ]]; then
+	if [[ $(echo $mask | grep [^0-9:]) ]]; then
 		echo "ERROR: Incorrect mask format, can only contain numbers and colons" 1>&2
 		return 1
 	fi
 
-	if [[ $(echo $1 | awk -F':' '{print NF}') -ne 4 ]]; then
+	if [[ $(echo $mask | awk -F':' '{print NF}') -ne 4 ]]; then
 		echo "ERROR: Incorrect mask format, incorrect octets number" 1>&2
 		return 1
 	fi
 
-	case $2 in
+	case $class in
 		A) min=1;;
 		B) min=2;;
 		C) min=2;;
 	esac
 
 	octet=1
-	while [ $(echo $1 | cut -d ":" -f $octet) ]; do
+	while [ $(echo $mask | cut -d ":" -f $octet) ]; do
 		if [[ $octet -le $min ]]; then
 			if [[ $(echo $1 | cut -d ":" -f $octet) -ne 255 ]]; then
 				echo "ERROR: Incorrect mask format" 1>&2
 				return 1
 			fi
 		else
-			if [[ $(echo $1 | cut -d ":" -f $octet) -lt 0 ]] || [[ $(echo $1 | cut -d ":" -f $octet) -gt 255 ]]; then
+			if [[ $(echo $mask | cut -d ":" -f $octet) -lt 0 ]] || [[ $(echo $mask | cut -d ":" -f $octet) -gt 255 ]]; then
 				echo "ERROR: Incorrect mask format" 1>&2
 				return 1
 			fi
@@ -89,7 +89,6 @@ check_mask() {
 		let octet=octet+1
 	done
 
-	echo $result
 }
 
 # El primer parametre retorna la interficie de xarxa amb connexió a internet
@@ -131,8 +130,11 @@ get_ip_of_nic() {
 
 	interface="$1"
 
-	nic_info=$(ip -4 a show $interface)
+	
 	nic_ip=""
+
+
+	nic_info=$(ip -4 a show $interface)
 
 	OLDIFS=$IFS
 	IFS=$' '
@@ -143,9 +145,9 @@ get_ip_of_nic() {
 	done
 	IFS=$OLDIFS
 
-	if [ -z $nic_ip ]; then
-		echo "Error: The ip assigned to the interface ${interface} was not found"
-		exit 1
+
+	if [ "$nic_ip" == "" ]; then
+		return 1
 	fi
 
 	echo "$nic_ip"
@@ -160,9 +162,10 @@ mask_to_cidr() {
 	fi
 	mask="$1"
 
-	result=$(check_mask "$mask")
+	check_mask "$mask"
+	result=$?
 
-	if [[ $result == "true" ]]; then
+	if [[ $result -eq 0 ]]; then
 		result=0
 		IFS=':' read -a mask_array <<< "$mask"
 
@@ -172,7 +175,7 @@ mask_to_cidr() {
 		done
 
 	else
-		exit 1
+		return 1
 	fi
 
 	echo "/$result"
@@ -189,25 +192,18 @@ calculate_network_ip() {
 	ip="$1"
 	mask="$2"
 
-	if [[ $(echo $ip | grep [^0-9.]) ]]; then
-		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
-		return 1
-	fi
+	
+	check_ip "$ip"
+	result1=$?
+	check_mask "$mask"
+	result2=$?
 
-	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
-		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
-		return 1
-	fi
-
-
-	result=$(check_mask "$mask")
-
-	if [[ $result == "true" ]]; then
+	if [ "$result1" -eq 0 ] && [ "$result2" -eq 0 ]; then
 		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
 		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
 		result=$(echo "$((i1 & m1)).$((i2 & m2)).$((i3 & m3)).$((i4 & m4))")
 	else
-		exit 1
+		return 1
 	fi
 
 	echo $result
@@ -223,25 +219,18 @@ calculate_first_ip() {
 	ip="$1"
 	mask="$2"
 
-	if [[ $(echo $ip | grep [^0-9.]) ]]; then
-		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
-		return 1
-	fi
+	check_ip "$ip"
+	result1=$?
 
-	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
-		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
-		return 1
-	fi
+	check_mask "$mask"
+	result2=$?
 
-
-	result=$(check_mask "$mask")
-
-	if [[ $result == "true" ]]; then
+	if [ "$result1" -eq 0 ] && [ "$result2" -eq 0 ]; then
 		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
 		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
 		result=$(echo "$((i1 & m1)).$((i2 & m2)).$((i3 & m3)).$(((i4 & m4)+1))")
 	else
-		exit 1
+		return 1
 	fi
 
 	echo $result
@@ -257,25 +246,17 @@ calculate_last_ip() {
 	ip="$1"
 	mask="$2"
 
-	if [[ $(echo $ip | grep [^0-9.]) ]]; then
-		echo "ERROR: Incorrect IP format, can only contain numbers and dots" 1>&2
-		return 1
-	fi
+	check_ip "$ip"
+	result1=$?
+	check_mask "$mask"
+	result2=$?
 
-	if [[ $(echo $ip| awk -F'.' '{print NF}') -ne 4 ]]; then
-		echo "ERROR: Incorrect IP format, incorrect octets number" 1>&2
-		return 1
-	fi
-
-
-	result=$(check_mask "$mask")
-
-	if [[ $result == "true" ]]; then
+	if [ "$result1" -eq 0 ] && [ "$result2" -eq 0 ]; then
 		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
 		IFS=: read -r m1 m2 m3 m4 <<< "$mask"
 		result=$(echo "$((i1 & m1 | 255-m1)).$((i2 & m2 | 255-m2)).$((i3 & m3 | 255-m3)).$(((i4 & m4 | 255-m4)-1))")
 	else
-		exit 1
+		return 1
 	fi
 
 	echo $result
