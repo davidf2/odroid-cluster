@@ -75,10 +75,21 @@ iptables -A OUTPUT -p TCP --dport 6818 -o $cluster_lan -j ACCEPT
 # Acceptem la entrada TCP des de la xarxa interna, degut a la obertura de ports dinamica de srun i mpirun
 iptables -A INPUT -p TCP -i $cluster_lan -j ACCEPT
 
-# Habilitem ICMP
+# Habilitem ICMP a la xarxa interna
 iptables -A INPUT -p ICMP  -i $cluster_lan -j ACCEPT
 iptables -A OUTPUT -p ICMP  -o $cluster_lan -j ACCEPT
+# Habilitem fer ping de dins cap a fora
+iptables -A OUTPUT -p ICMP --icmp-type 8 -o $internet -j ACCEPT
+iptables -A FORWARD -p ICMP --icmp-type 8  -o $internet -j ACCEPT
 
 # Acceptem les entrades pel port 2049 NFS
 iptables -A INPUT -p TCP --dport 2049 -i $cluster_lan -j ACCEPT
 iptables -A INPUT -p UDP --dport 2049 -i $cluster_lan -j ACCEPT
+
+# Acceptem les sortides i el reenciament de NTP per a chrony
+iptables -A OUTPUT -p UDP --dport 123 -o $internet -j ACCEPT
+iptables -A FORWARD -p UDP --dport 123 -o $internet -j ACCEPT
+
+# Acceptem les sortides i el reenviament del port 11371 per a poder fer apt-key cap a keyserver.ubuntu.com
+iptables -A OUTPUT -p TCP --dport 11371 -o $internet -j ACCEPT
+iptables -A FORWARD -p TCP --dport 11371 -o $internet -j ACCEPT

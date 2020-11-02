@@ -2,7 +2,7 @@
 
 # Carreguem el script locale.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source $(pwd)/locale.sh
+source $(echo "`dirname \"$0\"`")/locale.sh
 
 SLURM_ETC=/etc/slurm-llnl
 
@@ -81,10 +81,10 @@ upgrade="$2"
 sleep_time="$3"
 locale="$4"
 
-language=$(echo "$locale" | cut -d';' -f 1)
-layout=$(echo "$locale" | cut -d';' -f 2)
-variant=$(echo "$locale" | cut -d';' -f 3)
-timezone=$(echo "$locale" | cut -d';' -f 4)
+language=$(echo "$locale" | cut -d ";" -f 1)
+layout=$(echo "$locale" | cut -d ";" -f 2)
+variant=$(echo "$locale" | cut -d ";" -f 3)
+timezone=$(echo "$locale" | cut -d ";" -f 4)
 
 # Deshabilitem Unattended-Upgrade
 systemctl disable unattended-upgrades

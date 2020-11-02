@@ -23,7 +23,7 @@ layout=$(cat /etc/odroid_cluster.conf | grep "^LAYOUT=" | cut -d= -f2)
 variant=$(cat /etc/odroid_cluster.conf | grep "^VARIANT=" | cut -d= -f2)
 timezone=$(cat /etc/odroid_cluster.conf | grep "^SYS_TIMEZONE=" | cut -d= -f2)
 default_host=$(cat /etc/odroid_cluster.conf | grep "^HOSTS_NAME=" | cut -d= -f2)
-locale="$language;$layout;$variant;$timezone"
+locale="$language\;$layout\;$variant\;$timezone"
 
 KEY_FILE="${user_home}/.ssh/id_rsa.pub"
 KNOWN_HOSTS="${user_home}/.ssh/known_hosts"
@@ -56,6 +56,6 @@ interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-su $user_name -c "ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
+su $user_name -c "ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh ${master_ip} ${upgrade_slave} ${upgrade_time} ${locale} \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
 
 
