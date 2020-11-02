@@ -2,7 +2,7 @@
 
 # Carreguem el script locale.sh com a una llibreria, per 
 #	poder fer servir les seves funcions
-source ./locale.sh
+source $(pwd)/locale.sh
 
 SLURM_ETC=/etc/slurm-llnl
 

@@ -40,22 +40,22 @@ if [ $# -lt 1 ]; then
 fi
 
 # Afegim el fingerprint al fitxer de hosts coneguts
-su $user_name -c "echo \"$(ssh-keyscan -H $default_host)\" >> $KNOWN_HOSTS"
+su $user_name -c "echo \"$(ssh-keyscan -H $host)\" >> $KNOWN_HOSTS"
 
 # Copiem la clau publica al slave
-sshpass -p "$default_password ssh-copy-id -i $KEY_FILE $user_name@$default_host"
+su $user_name -c "sshpass -p $default_password ssh-copy-id -i $KEY_FILE $user_name@$host"
 
 # Copiem el script locale.sh dependencia de init_slave.sh
-scp "${scripts_path}/locale.sh ${user_name}@${default_host}:Documents"
+su $user_name -c "scp ${scripts_path}/locale.sh ${user_name}@${host}:Documents"
 
 # Copiem el script de inicialització al slave
-scp "${scripts_path}/init_slave.sh ${user_name}@${default_host}:Documents"
+su $user_name -c "scp ${scripts_path}/init_slave.sh ${user_name}@${host}:Documents"
 
 # Agafem la IP de la xarxa interna
 interface="$(cat /etc/dnsmasq.conf | grep interface= | cut -d= -f2)"
 master_ip="$(get_ip_of_nic $interface)"
 
 # Executem el script de inicialització al slave
-ssh -t "${user_name}@${default_host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
+su $user_name -c "ssh -t ${user_name}@${host} \"echo ${default_password} | sudo -S ~/Documents/init_slave.sh $master_ip $upgrade_slave $upgrade_time $locale \" >> /var/log/odroid_cluster/init_slave_${host}.out 2>&1"
 
 

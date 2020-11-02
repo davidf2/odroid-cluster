@@ -93,6 +93,7 @@ check_mask() {
 
 # El primer parametre retorna la interficie de xarxa amb connexió a internet
 check_interfaces() {
+	iptables -t nat -D POSTROUTING 1
 	OLDIFS=$IFS
 	IFS=$' \t\n'
 	# Cerca la NIC amb connexió a internet

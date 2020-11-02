@@ -340,6 +340,7 @@ add_monitoring
 # Modifiquem l'idioma
 set_language "$locale"
 
+
 if [ "$upgrade" -eq 1 ]; then
 	apt-get upgrade -y
 fi

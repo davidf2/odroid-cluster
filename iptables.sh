@@ -8,8 +8,6 @@ fi
 cluster_lan="$1"
 internet="$2"
 
-externaldns1="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS1=" | cut -d= -f2)"
-externaldns2="$(cat /etc/odroid_cluster.conf | grep "^EXTERNALDNS2=" | cut -d= -f2)"
 
 # Esborrem les regles anteriors
 iptables -F
@@ -33,6 +31,9 @@ iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
+# Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
+iptables -t nat -A POSTROUTING -o $internet -j MASQUERADE
+
 # Acceptem conexions SSH d'entrada i sortida nomes cap a la xarxa interna
 iptables -A INPUT -p TCP --dport 22 -j ACCEPT
 iptables -A OUTPUT -p TCP --dport 22 -o $cluster_lan -j ACCEPT
@@ -42,8 +43,8 @@ iptables -A INPUT -p TCP --dport 53 -i $cluster_lan -j ACCEPT
 iptables -A INPUT -p UDP --dport 53 -i $cluster_lan -j ACCEPT
 
 # Acceptem connexion DNS de sortida, pels servidors configurats
-iptables -A OUTPUT -p TCP -d "$externaldns1","$externaldns2" --dport 53 -j ACCEPT
-iptables -A OUTPUT -p UDP -d "$externaldns1","$externaldns2" --dport 53 -j ACCEPT
+iptables -A OUTPUT -p TCP  --dport 53 -j ACCEPT
+iptables -A OUTPUT -p UDP  --dport 53 -j ACCEPT
 
 # Acceptem les  entrades pel port 67 amb origen port 68 per al servidor DHCP
 iptables -A INPUT -p UDP --dport 67 -i $cluster_lan -j ACCEPT
@@ -81,6 +82,3 @@ iptables -A OUTPUT -p ICMP  -o $cluster_lan -j ACCEPT
 # Acceptem les entrades pel port 2049 NFS
 iptables -A INPUT -p TCP --dport 2049 -i $cluster_lan -j ACCEPT
 iptables -A INPUT -p UDP --dport 2049 -i $cluster_lan -j ACCEPT
-
-# Habilitem el postrouitng a iptables per donar acces a internet a la xarxa interna
-iptables -t nat -A POSTROUTING -o $internet -j MASQUERADE

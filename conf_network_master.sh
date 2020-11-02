@@ -5,11 +5,27 @@
 #	poder fer servir les seves funcions
 source network_lib.sh
 
+add_iptables() {
+	net_interface="$1"
+	lan_interface="$2"
+	path="$3"
+
+	# Configurem les iptables
+	"$path"/iptables.sh "$lan_interface" "$net_interface"
+	sleep 1
+	# Guardem els canvis a iptables de forma permanentment
+	iptables-save > /etc/iptables/rules.v4
+	iptables-save > /etc/iptables/rules.v6
+
+	systemctl enable netfilter-persistent
+	systemctl restart netfilter-persistent
+}
+
 # Default values
 ip=$(cat /etc/odroid_cluster.conf | grep "^IP=" | cut -d= -f2)
 mask=$(cat /etc/odroid_cluster.conf | grep "^MASK=" | cut -d= -f2)
 class=$(cat /etc/odroid_cluster.conf | grep "^IP_CLASS=" | cut -d= -f2)
-
+scripts_path="$(cat /etc/odroid_cluster.conf | grep "^SCRIPTS_DIR=" | cut -d= -f2)"
 
 line=$(cat /etc/hosts | grep 127.0.0.1)
 host=$(hostname)
@@ -51,19 +67,7 @@ sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 # Carrega els canvis sense reiniciar
 sysctl -p
 
-add_iptables "$net_interface" "$lan_interface"
-
-
-systemctl enable netfilter-persistent
-
-# Configurem les iptables
-./iptables.sh "$lan_interface" "$net_interface"
-sleep 1
-# Guardem els canvis a iptables de forma permanentment
-iptables-save > /etc/iptables/rules.v4
-iptables-save > /etc/iptables/rules.v6
-
-systemctl restart netfilter-persistent
+add_iptables "$net_interface" "$lan_interface" "$scripts_path"
 
 # Retornem els resultats
 echo "$ip;$mask;$net_interface;$lan_interface"

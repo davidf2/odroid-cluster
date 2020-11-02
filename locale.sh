@@ -14,6 +14,18 @@ set_language() {
                 exit 1
         fi
 
+        # Instal.lem el nou idioma
+        locale-gen "$locale".utf8
+        dpkg-reconfigure --frontend noninteractive locales
+
+        # Seleccionem el nou idioma
+        #update-locale LANG="$locale".UTF-8 LANGUAGE
+        localectl set-locale LANG="$locale".UTF-8 LANGUAGE="$locale".UTF-8:"$(echo $locale | cut -d_ -f1)"
+
+        # Actualitza les varaibles LANG i LANGUAGE
+        source /etc/default/locale
+
+
         if [ $(grep "source /etc/default/locale" /etc/profile | wc -l) -eq 0 ]; then
                 echo "source /etc/default/locale" >> /etc/profile
         fi
@@ -29,18 +41,6 @@ set_language() {
         if [ $(grep "source /etc/default/locale" /root/.bashrc | wc -l) -eq 0 ]; then
                 echo "source /etc/default/locale" >> /root/.bashrc
         fi
-
-        # Instal.lem el nou idioma
-        locale-gen "$locale".utf8
-
-        # Seleccionem el nou idioma
-        #update-locale LANG="$locale".UTF-8 LANGUAGE
-        localectl set-locale LANG="$locale".UTF-8 LANGUAGE="$locale".UTF-8:"$(echo $locale | cut -d_ -f1)"
-
-        # Actualitza les varaibles LANG i LANGUAGE
-        source /etc/default/locale
-
-        su $master_name -c 'source /etc/default/locale'
 
         # Instal.lem dependencies del nou idioma per tal de traduir-ho tot.
         apt-get install $(check-language-support -l "$locale") -y
