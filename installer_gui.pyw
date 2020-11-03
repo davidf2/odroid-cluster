@@ -885,6 +885,46 @@ def add_content_advanced(window):
 	padding_right.pack(expand=True, fill=BOTH, side=RIGHT)
 	#padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
 	
+def add_content_slurm(window):
+	padding_bottom = ttk.Frame(window.f3)
+	padding_up = ttk.Frame(window.f3)
+	content = ttk.Frame(window.f3)
+	padding_left = ttk.Frame(window.f3)
+	padding_right = ttk.Frame(window.f3)
+	padding_right2 = ttk.Frame(window.f3)
+	
+	window.f3.scheduler = StringVar()
+	window.f3.sched_type = IntVar()
+	window.f3.tracking = StringVar()
+	window.f3.track_type = IntVar()
+	window.f3.scheduler.set(read_option("SCHEDULER"))
+	window.f3.tracking.set(read_option("TRACKING"))
+	
+	if(window.f3.scheduler.get() == "sched/builtin"):
+		window.f3.sched_type.set(0)
+	elif(window.f3.scheduler.get() == "sched/backfill"):
+		window.f3.sched_type.set(1)
+		
+	if(window.f3.tracking.get() == "proctrack/cgroup"):
+		window.f3.track_type.set(0)
+	elif(window.f3.tracking.get() == "proctrack/pgid"):
+		window.f3.track_type.set(1)
+	elif(window.f3.tracking.get() == "proctrack/linuxproc"):
+		window.f3.track_type.set(2)
+	
+	window.f3.max_time = add_entry(content, read_option("MAX_TIME"), "Maximum time limit of jobs in minutes or INFINITE:")
+	
+	add_radiobutton_group(content,"Scheduler type:",window.f3.sched_type, ["First-In First-Out (FIFO)", "FIFO with backfill"], [0, 1], [None, None])
+	
+	add_radiobutton_group(content,"Process tracking type:",window.f3.track_type, ["Use Linux cgroups", "Use Unix process group ID", "Use parent process ID"], [0, 1, 2], [None, None, None])
+	
+	
+	padding_bottom.pack(fill=BOTH, side=BOTTOM)
+	padding_left.pack(expand=True, side=LEFT)
+	content.pack(expand=True, fill=BOTH, side=LEFT)
+	padding_right.pack(expand=True, fill=BOTH, side=RIGHT)
+	#padding_right2.pack(expand=True, fill=BOTH, side=RIGHT)
+	
 def installer_screen(window):
 	#Destruim la finestra
 	window.destroy()
@@ -911,6 +951,7 @@ def installer_screen(window):
 	window.notebook.pack(expand=1, fill=BOTH)
 	add_content_install(window)
 	add_content_advanced(window)
+	add_content_slurm(window)
 
 def write_options(window):
 	
@@ -940,6 +981,15 @@ def write_options(window):
 		correct = check_ip(window.f2.dns1, "DNS1")
 	if(correct):
 		correct = check_ip(window.f2.dns2, "DNS2")
+		
+	try:
+		if(window.f3.max_time.get() != "INFINITE"):
+			if(int(window.f3.max_time.get()) < 1):
+				messagebox.showerror(message='Maximum time limit of jobs has to be an integer value greater than 0 or INFINITE', title="Maximum time limit of jobs")
+				correct=False
+	except ValueError:
+		messagebox.showerror(message='Maximum time limit of jobs has to be an integer value greater than 0 or INFINITE', title="Maximum time limit of jobs")
+		correct=False
 	
 	if(correct):
 		write_option("DEFAULT_USER",window.f2.text_name.get())
@@ -956,6 +1006,19 @@ def write_options(window):
 		write_option("IP", str(ip.ip_num1.get()) + "." + str(ip.ip_num2.get()) + "." + str(ip.ip_num3.get()) + "." + str(ip.ip_num4.get()))
 		write_option("LAYOUT", layouts[layout.get()].get_code())
 		write_option("UPGRADE_SLEEP", str(window.f2.upgrade_entry.get()))
+		write_option("MAX_TIME", str(window.f3.max_time.get()))
+		write_option("SCHEDULER",str(window.f3.scheduler.get()))
+		write_option("TRACKING",str(window.f3.tracking.get()))
+		if(window.f3.sched_type.get() == 0):
+			write_option("SCHEDULER","sched/builtin")
+		elif(window.f3.sched_type.get() == 1):
+			write_option("SCHEDULER","sched/backfill")
+		if(window.f3.track_type.get() == 0):
+			write_option("TRACKING","proctrack/cgroup")
+		elif(window.f3.track_type.get() == 1):
+			write_option("TRACKING","proctrack/pgid")
+		elif(window.f3.track_type.get() == 2):
+			write_option("TRACKING","proctrack/linuxproc")
 		for i in layouts[layout.get()].get_variants():
 			if(variant.get() == i.get_name()):
 				write_option("VARIANT", i.get_code())
