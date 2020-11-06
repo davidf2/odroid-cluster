@@ -189,7 +189,7 @@ add_vnc() {
 	echo "
 	#!/bin/bash
 	exec /usr/bin/startxfce4 &
-	" > $(eval echo "~$name")/.vnc/xstartup
+	" > "$master_home"/.vnc/xstartup
 }
 
 add_nfs() {
@@ -294,6 +294,7 @@ echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 # Iptables persistent
 apt-get install iptables-persistent -y
+systemctl enable netfilter-persistent
 
 # Creem el directori de hosts compartits per a dnsmasq
 mkdir /etc/hosts.d

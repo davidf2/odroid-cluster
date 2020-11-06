@@ -12,13 +12,10 @@ add_iptables() {
 
 	# Configurem les iptables
 	"$path"/iptables.sh "$lan_interface" "$net_interface"
-	sleep 1
+	
 	# Guardem els canvis a iptables de forma permanentment
 	iptables-save > /etc/iptables/rules.v4
 	iptables-save > /etc/iptables/rules.v6
-
-	systemctl enable netfilter-persistent
-	systemctl restart netfilter-persistent
 }
 
 # Default values
