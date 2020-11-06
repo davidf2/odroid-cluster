@@ -86,7 +86,7 @@ iptables -A FORWARD -p ICMP --icmp-type 8  -o $internet -j ACCEPT
 iptables -A INPUT -p TCP --dport 2049 -i $cluster_lan -j ACCEPT
 iptables -A INPUT -p UDP --dport 2049 -i $cluster_lan -j ACCEPT
 
-# Acceptem les sortides i el reenciament de NTP per a chrony
+# Acceptem les sortides i el reenviament de NTP per a chrony
 iptables -A OUTPUT -p UDP --dport 123 -o $internet -j ACCEPT
 iptables -A FORWARD -p UDP --dport 123 -o $internet -j ACCEPT
 

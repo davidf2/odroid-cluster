@@ -43,9 +43,6 @@ TEXT_FONT=0
 
 FONT_SICE=15
 
-options=("DEFAULT_USER", "DEFAULT_PASSWORD", "HOSTS_NAME", "MAX_NODES",
-	"EXTERNALDNS1", "EXTERNALDNS2", "SCRIPTS_DIR", "UPGRADE", "SLURM_DIR",
-	"IP_CLASS", "MAX_TIME")
 
 theme= {
 		"TNotebook.Tab": {"configure": {"padding": [80, 10],
@@ -565,50 +562,34 @@ def set_ip_a():
 	ip.combo2['values'] = number_list
 	mask.min_value=8
 	mask.set(8)
-	for i in range(mask.min_value, 31):
+	for i in range(mask.min_value, 32):
 		mask_values.append(i)
 	mask.combo_mask['values'] = mask_values
-	ip.combo2.bind('<<ComboboxSelected>>', noneFunct)
-def noneFunct(event):
-	None
 
-def set_min_b_mask(event):
-	mask_values=[]
-	
-	# Busquem la mascara minima per aquesta xarxa
-	last_one=8
-	counter=0
-	for i in int_to_byte(ip.ip_num2.get()):
-		counter+=1
-		if(i == "1"):
-			last_one=counter+8
-	mask.set(16)
-	mask.min_value=last_one
-	for i in range(mask.min_value, 31):
-		mask_values.append(i)
 
-	mask.combo_mask['values'] = mask_values
 
 """ Funció per a resetejar els valors de les varaibles que formen el rang de IP privada B, a més 
 	modifica els valors per defecte dels dos primers combobox que formen les dues IP, també modifica 
 	els parametres de la funció que es crida al modificar el combobox del segon  nombre de la ip """
 def set_ip_b():
 	elements=[]
+	
+	for i in range(16,32):
+		elements.append(i)
+		
 	mask_values = []
 	ip.ip_num1.set(172)
 	ip.ip_num2.set(16)
 	ip.ip_num3.set(0)
 	ip.ip_num4.set(1)
-	
-	for i in range(16,32):
-		elements.append(str(i))
-		
 	ip.combo1['values'] = "172"
 	ip.combo2['values'] = elements
+	mask.min_value=12
+	mask.set(16)
+	for i in range(mask.min_value, 32):
+		mask_values.append(i)
+	mask.combo_mask['values'] = mask_values
 	
-	set_min_b_mask(None)
-	
-	ip.combo2.bind('<<ComboboxSelected>>', set_min_b_mask)
 
 """ Funció per a resetejar els valors de les varaibles que formen el rang de IP privada C, a més 
 	modifica els valors per defecte dels dos primers combobox que formen les dues IP """
@@ -623,10 +604,9 @@ def set_ip_c():
 	
 	mask.set(24)
 	mask.min_value=16
-	for i in range(mask.min_value, 31):
+	for i in range(mask.min_value, 32):
 		mask_values.append(i)
 	mask.combo_mask['values'] = mask_values
-	ip.combo2.bind('<<ComboboxSelected>>', noneFunct)
 
 """ Funció per afegir un 8 combobox per poder afegir el rang de ip 
 	privada """
@@ -634,6 +614,8 @@ def add_private_ip(window, frame):
 	# Declarem les variables necessaries com a globals
 	global ip
 	global number_list
+	list_ip_b=[]
+		
 	ip = ttk.Frame(window);
 	
 	ip.ip_num1 = IntVar()
@@ -651,15 +633,29 @@ def add_private_ip(window, frame):
 		
 	for i in range(1,255):
 		number_list_end.append(str(i))
+		
+	for i in range(16,32):
+		list_ip_b.append(i)
 	
 	subframe = ttk.Frame(frame)
 	
 	add_mask(window, subframe)
 	
 	add_label(frame, "IP: ")
-	ip.combo1=add_ip_dropdown(subframe, ["0"], ip.ip_num1)
+	
+	if(window.f2.radio1.get() == 'B'):
+		ip.combo1=add_ip_dropdown(subframe, ["172"], ip.ip_num1)
+	elif(window.f2.radio1.get() == 'C'):
+		ip.combo1=add_ip_dropdown(subframe, ["192"], ip.ip_num1)
+	else:
+		ip.combo1=add_ip_dropdown(subframe, ["10"], ip.ip_num1)
 	add_label(subframe, " . ")
-	ip.combo2=add_ip_dropdown(subframe, number_list, ip.ip_num2)
+	if(window.f2.radio1.get() == 'B'):
+		ip.combo2=add_ip_dropdown(subframe, list_ip_b, ip.ip_num2)
+	elif(window.f2.radio1.get() == 'C'):
+		ip.combo2=add_ip_dropdown(subframe, ["168"], ip.ip_num2)
+	else:
+		ip.combo2=add_ip_dropdown(subframe, number_list, ip.ip_num2)
 	add_label(subframe, " . ")
 	ip.combo3=add_ip_dropdown(subframe, number_list, ip.ip_num3)
 	add_label(subframe, " . ")
@@ -694,7 +690,7 @@ def add_mask(window, frame):
 		mask.min_value=8
 	
 	
-	for i in range(mask.min_value, 31):
+	for i in range(mask.min_value, 32):
 		mask_values.append(i)
 	
 	mask.combo_mask = add_ip_dropdown(frame, mask_values, mask)
@@ -1026,8 +1022,8 @@ def write_options(window):
 	
 def start_installation(window):
 	correct=write_options(window)
-	#if(correct):
-		#password=ask_password(window)
+	if(correct):
+		password=ask_password(window)
 
 # Creem la finestra principal
 root = Tk()
