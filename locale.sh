@@ -16,7 +16,6 @@ set_language() {
 
         # Instal.lem el nou idioma
         locale-gen "$locale".utf8
-        dpkg-reconfigure --frontend noninteractive locales
 
         # Seleccionem el nou idioma
         #update-locale LANG="$locale".UTF-8 LANGUAGE

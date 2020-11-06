@@ -41,11 +41,16 @@ fi
 net_interface=$(echo $result | cut -d ";" -f 1)
 lan_interface=$(echo $result | cut -d ";" -f 2)
 
-echo "
-auto $lan_interface
-iface $lan_interface inet static
-    address $ip
-    netmask ${mask//:/.}" > /etc/network/interfaces
+echo "auto lo
+iface lo inet loopback
+
+auto ${lan_interface}
+iface ${lan_interface} inet static
+    address ${ip}
+    netmask ${mask//:/.}
+
+auto ${net_interface}
+iface ${net_interface} inet dhcp" > /etc/network/interfaces
 
 echo "$ip master" >> /etc/hosts.d/lan_hosts
 

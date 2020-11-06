@@ -56,7 +56,7 @@ change_password() {
 	echo -e "${pass}\n${pass}" | passwd &> /dev/null
 	echo -e "${pass}\n${pass}" | passwd $master_name &> /dev/null
 	# Modifiquem el password de vnc
-	./set_vnc_password.sh "$pass"
+	#./set_vnc_password.sh "$pass"
 }
 
 add_ssh() {
@@ -131,6 +131,9 @@ add_dnsmasq() {
 	systemctl disable systemd-resolved
 	systemctl stop systemd-resolved
 
+	ifdown "$lan_interface"
+    ifup "$lan_interface"
+	
 	# Descomentem
 	sed -i '/prepend domain-name-servers 127.0.0.1;/s/^#//g' /etc/dhcp/dhclient.conf
 
