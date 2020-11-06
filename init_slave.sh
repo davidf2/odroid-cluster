@@ -164,6 +164,7 @@ dd if=/home/munge.key of=/etc/munge/munge.key
 systemctl restart munge
 
 add_slurm "${master_ip}"
+add_slurm_watcher
 
 apt-get install mpich -y
 
