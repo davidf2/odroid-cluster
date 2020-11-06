@@ -45,7 +45,7 @@ ControlMachine=master
 #MailProg=/bin/mail 
 MpiDefault=pmi2
 #MpiParams=ports=#-# 
-ProctrackType=proctrack/cgroup 
+ProctrackType=proctrack/cgroup
 ReturnToService=1 
 SlurmctldPidFile=/var/run/slurm-llnl/slurmctld.pid
 #SlurmctldPort=6817 
@@ -56,7 +56,7 @@ SlurmUser=slurm
 #SlurmdUser=root
 StateSaveLocation=/var/spool/slurm
 SwitchType=switch/none
-TaskPlugin=${tracking}
+TaskPlugin=task/cgroup
 #
 #
 # TIMERS 
